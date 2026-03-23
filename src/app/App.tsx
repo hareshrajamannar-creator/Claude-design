@@ -2,9 +2,14 @@ import { useState } from 'react';
 import { CalendarView } from './components/CalendarView';
 import { PostDetailsDrawer } from './components/PostDetailsDrawer';
 import { ActivityDrawer } from './components/ActivityDrawer';
+import { ApprovePostsView } from './components/ApprovePostsView';
+import { ApprovePostsDrawerContent } from './components/ApprovePostsDrawerContent';
+import { RejectedPostsView } from './components/RejectedPostsView';
 import svgPaths from '../imports/svg-q05k7ytov1';
 import { imgAddCircle, imgHelp, imgBitmapCopy } from '../imports/svg-ss3mz';
 import imgBitmapCopy1 from 'figma:asset/07f55cb4dc9076729807bf360ffceba0f970bd1f.png';
+
+type ActiveView = 'calendar' | 'approve-posts' | 'fix-rejected';
 
 const PRIMARY_ICONS = [
   { key: 'home', viewBox: '0 0 11.1666 12.7435', path: svgPaths.p3c83e900, active: false },
@@ -34,8 +39,12 @@ const SECONDARY_NAV_ITEMS = [
 ];
 
 export default function App() {
+  const [activeView, setActiveView] = useState<ActiveView>('calendar');
   const [selectedPost, setSelectedPost] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<string | null>(null);
+
+  // For approve-posts view, we use a dedicated drawer
+  const [approveDrawerPostId, setApproveDrawerPostId] = useState<string | null>(null);
 
   return (
     <div className="bg-white relative h-screen overflow-hidden flex">
@@ -207,19 +216,45 @@ export default function App() {
                 </div>
                 {/* Sub-items */}
                 <div className="content-stretch flex flex-col items-start relative shrink-0">
-                  {/* Calendar - active */}
-                  <div className="bg-[#e5e9f0] content-stretch flex h-[28px] items-center px-[8px] py-[4px] relative rounded-[4px] shrink-0 w-[190px] cursor-pointer">
+                  {/* Calendar */}
+                  <div
+                    className={`content-stretch flex h-[28px] items-center px-[8px] py-[4px] relative rounded-[4px] shrink-0 w-[190px] cursor-pointer ${activeView === 'calendar' ? 'bg-[#e5e9f0]' : 'hover:bg-[#f0f0f0]'}`}
+                    onClick={() => setActiveView('calendar')}
+                  >
                     <p className="flex-[1_0_0] font-['Roboto:Light',sans-serif] font-light leading-[normal] min-h-px min-w-px relative text-[#212121] text-[14px] tracking-[-0.28px]" style={{ fontVariationSettings: "'wdth' 100" }}>
                       Calendar
                     </p>
                   </div>
-                  {['View drafts', 'Approve posts', 'Fix failed posts', 'Fix rejected posts'].map((item) => (
-                    <div key={item} className="content-stretch flex gap-[8px] h-[28px] items-center px-[8px] py-[4px] relative shrink-0 w-[190px] cursor-pointer hover:bg-[#f0f0f0] rounded-[4px]">
-                      <p className="flex-[1_0_0] font-['Roboto:Light',sans-serif] font-light leading-[normal] min-h-px min-w-px relative text-[#212121] text-[14px] tracking-[-0.28px]" style={{ fontVariationSettings: "'wdth' 100" }}>
-                        {item}
-                      </p>
-                    </div>
-                  ))}
+                  {/* View drafts */}
+                  <div className="content-stretch flex gap-[8px] h-[28px] items-center px-[8px] py-[4px] relative shrink-0 w-[190px] cursor-pointer hover:bg-[#f0f0f0] rounded-[4px]">
+                    <p className="flex-[1_0_0] font-['Roboto:Light',sans-serif] font-light leading-[normal] min-h-px min-w-px relative text-[#212121] text-[14px] tracking-[-0.28px]" style={{ fontVariationSettings: "'wdth' 100" }}>
+                      View drafts
+                    </p>
+                  </div>
+                  {/* Approve posts */}
+                  <div
+                    className={`content-stretch flex gap-[8px] h-[28px] items-center px-[8px] py-[4px] relative shrink-0 w-[190px] cursor-pointer rounded-[4px] ${activeView === 'approve-posts' ? 'bg-[#e5e9f0]' : 'hover:bg-[#f0f0f0]'}`}
+                    onClick={() => setActiveView('approve-posts')}
+                  >
+                    <p className="flex-[1_0_0] font-['Roboto:Light',sans-serif] font-light leading-[normal] min-h-px min-w-px relative text-[#212121] text-[14px] tracking-[-0.28px]" style={{ fontVariationSettings: "'wdth' 100" }}>
+                      Approve posts
+                    </p>
+                  </div>
+                  {/* Fix failed posts */}
+                  <div className="content-stretch flex gap-[8px] h-[28px] items-center px-[8px] py-[4px] relative shrink-0 w-[190px] cursor-pointer hover:bg-[#f0f0f0] rounded-[4px]">
+                    <p className="flex-[1_0_0] font-['Roboto:Light',sans-serif] font-light leading-[normal] min-h-px min-w-px relative text-[#212121] text-[14px] tracking-[-0.28px]" style={{ fontVariationSettings: "'wdth' 100" }}>
+                      Fix failed posts
+                    </p>
+                  </div>
+                  {/* Fix rejected posts */}
+                  <div
+                    className={`content-stretch flex gap-[8px] h-[28px] items-center px-[8px] py-[4px] relative shrink-0 w-[190px] cursor-pointer rounded-[4px] ${activeView === 'fix-rejected' ? 'bg-[#e5e9f0]' : 'hover:bg-[#f0f0f0]'}`}
+                    onClick={() => setActiveView('fix-rejected')}
+                  >
+                    <p className="flex-[1_0_0] font-['Roboto:Light',sans-serif] font-light leading-[normal] min-h-px min-w-px relative text-[#212121] text-[14px] tracking-[-0.28px]" style={{ fontVariationSettings: "'wdth' 100" }}>
+                      Fix rejected posts
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -243,12 +278,26 @@ export default function App() {
             </div>
           </div>
 
-          {/* Main Content - Calendar */}
+          {/* Main Content */}
           <div className="flex-1 overflow-auto bg-white">
-            <CalendarView
-              onPostClick={setSelectedPost}
-              onActivityClick={setSelectedActivity}
-            />
+            {activeView === 'calendar' && (
+              <CalendarView
+                onPostClick={setSelectedPost}
+                onActivityClick={setSelectedActivity}
+              />
+            )}
+            {activeView === 'approve-posts' && (
+              <ApprovePostsView
+                onOpenDetails={(id) => setApproveDrawerPostId(id)}
+                onOpenActivity={setSelectedActivity}
+              />
+            )}
+            {activeView === 'fix-rejected' && (
+              <RejectedPostsView
+                onOpenDetails={setSelectedPost}
+                onOpenActivity={setSelectedActivity}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -262,6 +311,21 @@ export default function App() {
         postId={selectedActivity}
         onClose={() => setSelectedActivity(null)}
       />
+
+      {/* Approve Posts Drawer (dedicated for approve-posts view) */}
+      {approveDrawerPostId && (
+        <div className="absolute inset-0 bg-black/30 z-20" onClick={() => setApproveDrawerPostId(null)}>
+          <div
+            className="absolute bg-white h-full overflow-auto right-0 top-0 w-[650px]"
+            onClick={e => e.stopPropagation()}
+          >
+            <ApprovePostsDrawerContent
+              postId={approveDrawerPostId}
+              onClose={() => setApproveDrawerPostId(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,0 +1,370 @@
+import { useState } from 'react';
+import {
+  Pencil, MessageSquare, Info, History, Copy, Trash2,
+  Search, ChevronDown, MoreVertical, AlertCircle, Clock, RefreshCw
+} from 'lucide-react';
+import { POST_DATA } from '../data/postData';
+import { APPROVAL_DATA } from '../data/approvalData';
+
+// ─── Platform Icons ────────────────────────────────────────────────────────────
+
+function FacebookIcon({ size = 22 }: { size?: number }) {
+  return (
+    <div className="relative shrink-0 rounded-full overflow-hidden" style={{ width: size, height: size }}>
+      <div className="absolute inset-0 bg-[#337fff]" />
+      <svg className="absolute inset-0 m-auto" width={size * 0.5} height={size * 0.55} viewBox="0 0 10 18" fill="white">
+        <path d="M6.5 6H9V3.5C8.3 3.2 7.4 3 6.5 3 4 3 2.5 4.5 2.5 7V9H0v3h2.5V18h3V12H8l.5-3H5.5V7.2C5.5 6.5 5.9 6 6.5 6z" />
+      </svg>
+    </div>
+  );
+}
+
+function InstagramIcon({ size = 22 }: { size?: number }) {
+  return (
+    <div className="relative shrink-0 rounded-[6px] overflow-hidden" style={{ width: size, height: size }}>
+      <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(-45deg,#fbe18a,#fcbb45,#f75274,#d53692,#8f39ce,#5b4fe9)' }} />
+      <svg className="absolute inset-0 m-auto" width={size * 0.6} height={size * 0.6} viewBox="0 0 24 24" fill="white">
+        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+      </svg>
+    </div>
+  );
+}
+
+function LinkedInIcon({ size = 22 }: { size?: number }) {
+  return (
+    <div className="relative shrink-0 rounded-[6px] overflow-hidden" style={{ width: size, height: size }}>
+      <div className="absolute inset-0 bg-[#0a66c2]" />
+      <svg className="absolute inset-0 m-auto" width={size * 0.6} height={size * 0.6} viewBox="0 0 24 24" fill="white">
+        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.771v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+      </svg>
+    </div>
+  );
+}
+
+function PlatformIcons({ platforms }: { platforms: ('facebook' | 'instagram' | 'linkedin')[] }) {
+  return (
+    <div className="flex items-center gap-[8px]">
+      {platforms.includes('facebook') && <FacebookIcon />}
+      {platforms.includes('instagram') && <InstagramIcon />}
+      {platforms.includes('linkedin') && <LinkedInIcon />}
+    </div>
+  );
+}
+
+// ─── Status Badge ──────────────────────────────────────────────────────────────
+
+type CardStatus = 'rejected' | 'expired';
+
+const statusConfig: Record<CardStatus, { bg: string; color: string; label: string; icon: React.ReactNode }> = {
+  rejected: { bg: '#fde3e1', color: '#bf170a', label: 'Rejected',
+    icon: <AlertCircle size={13} className="inline mr-[3px] mb-[1px]" /> },
+  expired:  { bg: '#f0f0f0', color: '#555',    label: 'Expired',
+    icon: <Clock size={13} className="inline mr-[3px] mb-[1px]" /> },
+};
+
+function StatusBadge({ status }: { status: CardStatus }) {
+  const cfg = statusConfig[status];
+  return (
+    <span
+      className="font-['Roboto:Regular',sans-serif] text-[12px] px-[8px] py-[3px] rounded-[4px] whitespace-nowrap shrink-0 flex items-center gap-[3px]"
+      style={{ backgroundColor: cfg.bg, color: cfg.color }}
+    >
+      {cfg.icon}{cfg.label}
+    </span>
+  );
+}
+
+// ─── Rejection Banner ──────────────────────────────────────────────────────────
+
+function RejectionBanner({ reason, rejectedBy }: { reason: string; rejectedBy?: string }) {
+  return (
+    <div className="bg-[#fde3e1] border border-[#f5c6c2] rounded-[6px] px-[14px] py-[10px] mb-[12px]">
+      <div className="flex items-start gap-[8px]">
+        <AlertCircle size={16} className="text-[#bf170a] shrink-0 mt-[1px]" />
+        <div>
+          {rejectedBy && (
+            <p className="font-['Roboto:Medium',sans-serif] text-[12px] text-[#bf170a] mb-[2px]" style={{ fontVariationSettings: "'wdth' 100" }}>
+              Rejected by {rejectedBy}
+            </p>
+          )}
+          <p className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#bf170a] leading-[18px]" style={{ fontVariationSettings: "'wdth' 100" }}>
+            {reason}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Expired Banner ────────────────────────────────────────────────────────────
+
+function ExpiredBanner() {
+  return (
+    <div className="bg-[#f5f5f5] border border-[#e0e0e0] rounded-[6px] px-[14px] py-[10px] mb-[12px]">
+      <div className="flex items-start gap-[8px]">
+        <Clock size={16} className="text-[#777] shrink-0 mt-[1px]" />
+        <div>
+          <p className="font-['Roboto:Medium',sans-serif] text-[12px] text-[#555] mb-[2px]" style={{ fontVariationSettings: "'wdth' 100" }}>
+            Approval window expired
+          </p>
+          <p className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#777] leading-[18px]" style={{ fontVariationSettings: "'wdth' 100" }}>
+            The scheduled time passed without completing the approval process. Edit and resubmit to publish this post.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Post Card ─────────────────────────────────────────────────────────────────
+
+interface RejectedPostCardProps {
+  postId: string;
+  cardStatus: CardStatus;
+  onOpenDetails: (postId: string) => void;
+  onOpenActivity: (postId: string) => void;
+}
+
+function RejectedPostCard({ postId, cardStatus, onOpenDetails, onOpenActivity }: RejectedPostCardProps) {
+  const post = POST_DATA[postId];
+  const approval = APPROVAL_DATA[postId];
+  if (!post) return null;
+
+  const locationCount = approval?.locations?.length ?? 3;
+  const displayDate = `${post.date.split(',')[1]?.trim() ?? post.date}, ${post.time}`;
+
+  // Find primary rejection reason
+  let rejectionReason = '';
+  let rejectedBy = '';
+  if (approval) {
+    for (const step of approval.steps) {
+      for (const approver of step.approvers) {
+        if (approver.action === 'rejected' && approver.rejectionReason) {
+          rejectionReason = approver.rejectionReason;
+          rejectedBy = approver.isCurrentUser ? 'You' : approver.name;
+          break;
+        }
+      }
+      if (rejectionReason) break;
+    }
+    // Fallback to location rejection
+    if (!rejectionReason) {
+      const rejectedLoc = approval.locations.find(l => l.status === 'rejected' && l.rejectionReason);
+      if (rejectedLoc) {
+        rejectionReason = rejectedLoc.rejectionReason ?? '';
+        rejectedBy = rejectedLoc.actionedBy ?? '';
+      }
+    }
+  }
+
+  return (
+    <div
+      className="bg-white border border-[#eaeaea] rounded-[8px] overflow-hidden cursor-pointer hover:border-[#1976d2] transition-colors"
+      onClick={() => onOpenDetails(postId)}
+    >
+      <div className="px-[16px] pt-[16px] pb-[0px]">
+        {/* Top row: channel icons + status badge */}
+        <div className="flex items-center justify-between mb-[10px]">
+          <PlatformIcons platforms={post.platforms.length > 1 ? post.platforms : ['facebook', 'instagram', 'linkedin']} />
+          <StatusBadge status={cardStatus} />
+        </div>
+
+        {/* Meta row */}
+        <div className="flex items-center gap-[6px] mb-[12px] flex-wrap">
+          <span className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#555]">{displayDate}</span>
+          <span className="text-[#aaa] text-[12px]">•</span>
+          <span className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#555]">{locationCount} locations</span>
+          <span className="text-[#aaa] text-[12px]">•</span>
+          <span className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#555]">{approval?.submittedBy ?? 'Creator name'}</span>
+          <span className="text-[#aaa] text-[12px]">•</span>
+          <span className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#555]">{approval?.workflowTitle ?? 'Workflow name'}</span>
+        </div>
+
+        {/* Rejection / Expired banner */}
+        {cardStatus === 'rejected' && rejectionReason && (
+          <RejectionBanner reason={rejectionReason} rejectedBy={rejectedBy} />
+        )}
+        {cardStatus === 'expired' && <ExpiredBanner />}
+
+        {/* Caption */}
+        <p className="font-['Roboto:Regular',sans-serif] text-[14px] text-[#212121] leading-[22px] mb-[12px] line-clamp-2" style={{ fontVariationSettings: "'wdth' 100" }}>
+          {post.caption}
+        </p>
+
+        {/* Hashtags */}
+        <p className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#1976d2] leading-[20px] mb-[14px] line-clamp-1">
+          {post.hashtags}
+        </p>
+
+        {/* Image */}
+        <div className="flex gap-[8px] mb-[14px]">
+          <div className="relative rounded-[6px] overflow-hidden shrink-0" style={{ width: 112, height: 112 }}>
+            <img src={post.image} alt="Post" className="w-full h-full object-cover" />
+          </div>
+        </div>
+      </div>
+
+      {/* Action bar */}
+      <div
+        className="border-t border-[#eaeaea] px-[16px] py-[10px] flex items-center justify-between"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Left icons */}
+        <div className="flex items-center gap-[12px]">
+          <button className="text-[#555] hover:text-[#212121] p-[2px]" title="Edit">
+            <Pencil size={18} />
+          </button>
+          <button className="text-[#555] hover:text-[#212121] p-[2px]" title="Comment">
+            <MessageSquare size={18} />
+          </button>
+          <button className="text-[#555] hover:text-[#212121] p-[2px]" title="Info">
+            <Info size={18} />
+          </button>
+          <button
+            className="text-[#555] hover:text-[#1976d2] p-[2px]"
+            title="Activity"
+            onClick={() => onOpenActivity(postId)}
+          >
+            <History size={18} />
+          </button>
+          <button className="text-[#555] hover:text-[#212121] p-[2px]" title="Copy">
+            <Copy size={18} />
+          </button>
+          <button className="text-[#555] hover:text-[#bf170a] p-[2px]" title="Delete">
+            <Trash2 size={18} />
+          </button>
+        </div>
+
+        {/* Right: Edit & Resubmit */}
+        <div className="flex items-center gap-[8px]">
+          <button className="h-[36px] px-[16px] flex items-center gap-[6px] rounded-[4px] border border-[#e5e9f0] bg-white font-['Roboto:Regular',sans-serif] text-[14px] text-[#212121] hover:bg-[#f5f5f5] transition-colors">
+            <Pencil size={14} /> Edit
+          </button>
+          <button className="h-[36px] px-[16px] flex items-center gap-[6px] rounded-[4px] bg-[#1976d2] font-['Roboto:Regular',sans-serif] text-[14px] text-white hover:bg-[#1565c0] transition-colors">
+            <RefreshCw size={14} /> Resubmit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Mock Expired Posts ────────────────────────────────────────────────────────
+// These are additional expired posts (awaiting posts that timed out)
+const EXPIRED_POST_IDS = ['post-7']; // Post 7 is scheduled — we'll show it as expired for demo
+
+// ─── Main View ─────────────────────────────────────────────────────────────────
+
+interface RejectedPostsViewProps {
+  onOpenDetails: (postId: string) => void;
+  onOpenActivity: (postId: string) => void;
+}
+
+type FilterTab = 'all' | 'rejected' | 'expired';
+
+export function RejectedPostsView({ onOpenDetails, onOpenActivity }: RejectedPostsViewProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<FilterTab>('all');
+
+  // Rejected posts from data
+  const rejectedPostIds = Object.keys(POST_DATA).filter(
+    id => POST_DATA[id].status === 'rejected'
+  );
+
+  // All cards: rejected + expired
+  type CardEntry = { postId: string; cardStatus: CardStatus };
+  const allCards: CardEntry[] = [
+    ...rejectedPostIds.map(id => ({ postId: id, cardStatus: 'rejected' as CardStatus })),
+    ...EXPIRED_POST_IDS.map(id => ({ postId: id, cardStatus: 'expired' as CardStatus })),
+  ];
+
+  const filtered = allCards.filter(({ postId, cardStatus }) => {
+    if (activeTab !== 'all' && cardStatus !== activeTab) return false;
+    if (searchQuery) {
+      const post = POST_DATA[postId];
+      return post?.caption?.toLowerCase().includes(searchQuery.toLowerCase());
+    }
+    return true;
+  });
+
+  const tabs: { id: FilterTab; label: string; count: number }[] = [
+    { id: 'all', label: 'All', count: allCards.length },
+    { id: 'rejected', label: 'Rejected', count: rejectedPostIds.length },
+    { id: 'expired', label: 'Expired', count: EXPIRED_POST_IDS.length },
+  ];
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Page header */}
+      <div className="border-b border-[#eaeaea] px-[24px] h-[64px] flex items-center justify-between shrink-0 bg-white">
+        <h1 className="font-['Roboto:Regular',sans-serif] font-normal text-[20px] text-[#212121] tracking-[-0.4px]" style={{ fontVariationSettings: "'wdth' 100" }}>
+          Fix rejected posts
+        </h1>
+        <div className="flex items-center gap-[8px]">
+          <div className="relative flex items-center">
+            <Search size={16} className="absolute left-[10px] text-[#aaa]" />
+            <input
+              type="text"
+              placeholder="Search posts..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="h-[36px] pl-[32px] pr-[12px] rounded-[4px] border border-[#e5e9f0] font-['Roboto:Regular',sans-serif] text-[14px] text-[#212121] outline-none focus:border-[#1976d2] w-[200px]"
+            />
+          </div>
+          <button className="h-[36px] px-[12px] flex items-center gap-[6px] rounded-[4px] border border-[#e5e9f0] bg-white font-['Roboto:Regular',sans-serif] text-[14px] text-[#212121] hover:bg-[#f5f5f5]">
+            Newest <ChevronDown size={16} />
+          </button>
+          <button className="h-[36px] w-[36px] flex items-center justify-center rounded-[4px] border border-[#e5e9f0] bg-white hover:bg-[#f5f5f5]">
+            <MoreVertical size={16} className="text-[#555]" />
+          </button>
+        </div>
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex gap-[0px] border-b border-[#eaeaea] px-[24px] bg-white shrink-0">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            className={`px-[16px] py-[12px] font-['Roboto:Regular',sans-serif] text-[14px] border-b-2 -mb-[1px] flex items-center gap-[6px] transition-colors ${
+              activeTab === tab.id
+                ? 'border-[#1976d2] text-[#1976d2]'
+                : 'border-transparent text-[#555] hover:text-[#212121]'
+            }`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+            <span
+              className={`text-[11px] px-[6px] py-[1px] rounded-[10px] ${
+                activeTab === tab.id ? 'bg-[#1976d2] text-white' : 'bg-[#eaeaea] text-[#555]'
+              }`}
+            >
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Posts list */}
+      <div className="flex-1 overflow-y-auto px-[24px] py-[16px]">
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-[300px] gap-[8px]">
+            <p className="font-['Roboto:Regular',sans-serif] text-[16px] text-[#555]">No posts here</p>
+            <p className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#aaa]">All posts are approved and on track!</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-[16px] max-w-[700px] mx-auto">
+            {filtered.map(({ postId, cardStatus }) => (
+              <RejectedPostCard
+                key={postId}
+                postId={postId}
+                cardStatus={cardStatus}
+                onOpenDetails={onOpenDetails}
+                onOpenActivity={onOpenActivity}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
