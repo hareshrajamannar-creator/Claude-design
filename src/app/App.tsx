@@ -5,11 +5,12 @@ import { ActivityDrawer } from './components/ActivityDrawer';
 import { ApprovePostsView } from './components/ApprovePostsView';
 import { ApprovePostsDrawerContent } from './components/ApprovePostsDrawerContent';
 import { RejectedPostsView } from './components/RejectedPostsView';
+import { ApprovalsSetupView } from './components/ApprovalsSetupView';
 import svgPaths from '../imports/svg-q05k7ytov1';
 import { imgAddCircle, imgHelp, imgBitmapCopy } from '../imports/svg-ss3mz';
 import imgBitmapCopy1 from 'figma:asset/07f55cb4dc9076729807bf360ffceba0f970bd1f.png';
 
-type ActiveView = 'calendar' | 'approve-posts' | 'fix-rejected';
+type ActiveView = 'calendar' | 'approve-posts' | 'fix-rejected' | 'approvals-setup';
 
 const PRIMARY_ICONS = [
   { key: 'home', viewBox: '0 0 11.1666 12.7435', path: svgPaths.p3c83e900, active: false },
@@ -42,6 +43,7 @@ export default function App() {
   const [activeView, setActiveView] = useState<ActiveView>('calendar');
   const [selectedPost, setSelectedPost] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<string | null>(null);
+  const [settingsExpanded, setSettingsExpanded] = useState(false);
 
   // For approve-posts view, we use a dedicated drawer
   const [approveDrawerPostId, setApproveDrawerPostId] = useState<string | null>(null);
@@ -261,18 +263,44 @@ export default function App() {
               {/* Collapsed sections */}
               {SECONDARY_NAV_ITEMS.map((item) => (
                 <div key={item.key} className="content-stretch flex flex-col items-start relative shrink-0 w-full">
-                  <div className="content-stretch flex gap-[8px] h-[28px] items-start px-[8px] py-[4px] relative rounded-[4px] shrink-0 w-[190px] cursor-pointer hover:bg-[#f0f0f0]">
+                  <div
+                    className="content-stretch flex gap-[8px] h-[28px] items-start px-[8px] py-[4px] relative rounded-[4px] shrink-0 w-[190px] cursor-pointer hover:bg-[#f0f0f0]"
+                    onClick={() => {
+                      if (item.key === 'settings') {
+                        setSettingsExpanded(prev => !prev);
+                      }
+                    }}
+                  >
                     <p className="flex-[1_0_0] font-['Roboto:Regular',sans-serif] font-normal leading-[20px] min-h-px min-w-px relative text-[#212121] text-[14px] tracking-[-0.28px]" style={{ fontVariationSettings: "'wdth' 100" }}>
                       {item.label}
                     </p>
                     <div className="relative shrink-0 size-[20px]">
                       <div className="absolute inset-[37.46%_27.42%_37.45%_27.49%] mask-alpha mask-intersect mask-no-clip mask-no-repeat mask-position-[-5.498px_-7.492px] mask-size-[20px_20px]" style={{ maskImage: `url('${imgHelp}')` }}>
-                        <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 9.01782 5.0176">
+                        <svg
+                          className="absolute block size-full"
+                          fill="none"
+                          preserveAspectRatio="none"
+                          viewBox="0 0 9.01782 5.0176"
+                          style={{ transform: item.key === 'settings' && settingsExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+                        >
                           <path d={svgPaths.p5ccaa80} fill="#303030" />
                         </svg>
                       </div>
                     </div>
                   </div>
+                  {/* Settings sub-items */}
+                  {item.key === 'settings' && settingsExpanded && (
+                    <div className="content-stretch flex flex-col items-start relative shrink-0 pl-[8px]">
+                      <div
+                        className={`content-stretch flex h-[28px] items-center px-[8px] py-[4px] relative rounded-[4px] shrink-0 w-[182px] cursor-pointer ${activeView === 'approvals-setup' ? 'bg-[#e5e9f0]' : 'hover:bg-[#f0f0f0]'}`}
+                        onClick={() => setActiveView('approvals-setup')}
+                      >
+                        <p className="flex-[1_0_0] font-['Roboto:Light',sans-serif] font-light leading-[normal] min-h-px min-w-px relative text-[#212121] text-[14px] tracking-[-0.28px]" style={{ fontVariationSettings: "'wdth' 100" }}>
+                          Approvals
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -297,6 +325,9 @@ export default function App() {
                 onOpenDetails={setSelectedPost}
                 onOpenActivity={setSelectedActivity}
               />
+            )}
+            {activeView === 'approvals-setup' && (
+              <ApprovalsSetupView />
             )}
           </div>
         </div>
