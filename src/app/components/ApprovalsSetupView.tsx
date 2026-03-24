@@ -1,6 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import {
+  Search, Plus, MoreVertical, ChevronDown, X, Info,
+  Check, Pencil, SlidersHorizontal
+} from 'lucide-react';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────
+
 interface Approver {
   id: string;
   name: string;
@@ -12,705 +17,325 @@ interface Approver {
 
 interface Step {
   id: number;
-  title: string;
+  name: string;
   approvers: Approver[];
-  requireAll: boolean;
+  requireMode: 'any' | 'all';
 }
 
-type CoverageStatus = 'covered' | 'at-risk' | 'empty';
+interface Workflow {
+  id: string;
+  name: string;
+  status: 'Enabled' | 'Disabled';
+  lastUpdated: string;
+  updatedBy: string;
+}
 
-// ─── Icons ───────────────────────────────────────────────────────────────────
-const AlertTriangle = ({ size = 16, className = '' }: { size?: number; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-  </svg>
-);
+// ─── Mock Data ─────────────────────────────────────────────────────────────────
 
-const CheckCircle = ({ size = 16, className = '' }: { size?: number; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-  </svg>
-);
+const WORKFLOWS: Workflow[] = [
+  { id: 'wf1', name: 'Compliance check',           status: 'Enabled',  lastUpdated: 'Mar 13, 2026', updatedBy: 'Emma'   },
+  { id: 'wf2', name: 'Manager review',             status: 'Disabled', lastUpdated: 'Mar 12, 2026', updatedBy: 'Samuel' },
+  { id: 'wf3', name: 'Team lead sign-off',         status: 'Enabled',  lastUpdated: 'Mar 11, 2026', updatedBy: 'James'  },
+  { id: 'wf4', name: 'Local store manager approval', status: 'Disabled', lastUpdated: 'Mar 10, 2026', updatedBy: 'Ethan'  },
+  { id: 'wf5', name: 'Brand & Legal approval',     status: 'Enabled',  lastUpdated: 'Mar 10, 2026', updatedBy: 'Evelyn' },
+];
 
-const Plus = ({ size = 14, className = '' }: { size?: number; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-  </svg>
-);
+const ALL_APPROVERS: Approver[] = [
+  { id: 'u1', name: 'Aaron Blake',    initials: 'AB', color: '#1976d2', locationType: 'partial', locations: ['Boston, MA','Culver City, CA','Corvallis, OR','Fremont, CA','Kansas City, MO','Manchester, LA','Springfield, IL','Tampa, FL','Tucson, AZ','Austin, TX'] },
+  { id: 'u2', name: 'Brian Carter',   initials: 'BC', color: '#e67e22', locationType: 'partial', locations: ['Boston, MA','Culver City, CA'] },
+  { id: 'u3', name: 'Daniel Foster',  initials: 'DF', color: '#27ae60', locationType: 'all',     locations: [] },
+  { id: 'u4', name: 'Michael Turner', initials: 'MT', color: '#8e44ad', locationType: 'partial', locations: ['Boston, MA','Culver City, CA','Corvallis, OR','Fremont, CA','Kansas City, MO'] },
+  { id: 'u5', name: 'Steven Walker',  initials: 'SW', color: '#c0392b', locationType: 'partial', locations: ['Boston, MA','Culver City, CA','Corvallis, OR','Fremont, CA','Kansas City, MO','Manchester, LA','Springfield, IL','Tampa, FL','Tucson, AZ','Austin, TX'] },
+  { id: 'u6', name: 'William Smith',  initials: 'WS', color: '#5b7fff', locationType: 'all',     locations: [] },
+  { id: 'u7', name: 'John Doe',       initials: 'JD', color: '#e67e22', locationType: 'partial', locations: ['Atlanta, GA','Denver, CO'] },
+];
 
-const XIcon = ({ size = 12 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-  </svg>
-);
-
-const ChevronDown = ({ size = 14 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="6 9 12 15 18 9"/>
-  </svg>
-);
-
-const GripVertical = ({ size = 14 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/>
-    <circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>
-  </svg>
-);
-
-const InfoIcon = ({ size = 14 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-  </svg>
-);
-
-const Trash2 = ({ size = 14 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-  </svg>
-);
-
-const ArrowLeft = ({ size = 16 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
-  </svg>
-);
-
-const Settings2 = ({ size = 16 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-  </svg>
-);
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
-const INITIAL_STEPS: Step[] = [
+const DEFAULT_STEPS: Step[] = [
   {
     id: 1,
-    title: 'Step 1',
+    name: 'Step 1',
     approvers: [
-      { id: 'a1', name: 'William Smith', initials: 'WS', color: '#5b7fff', locationType: 'all', locations: [] },
-      { id: 'a2', name: 'John Doe', initials: 'JD', color: '#e67e22', locationType: 'partial', locations: ['Atlanta, GA', 'Denver, CO'] },
+      ALL_APPROVERS.find(a => a.id === 'u6')!,
+      ALL_APPROVERS.find(a => a.id === 'u7')!,
     ],
-    requireAll: false,
-  },
-  {
-    id: 2,
-    title: 'Step 2',
-    approvers: [
-      { id: 'a3', name: 'Aaron Blake', initials: 'AB', color: '#27ae60', locationType: 'partial', locations: ['Atlanta, GA'] },
-      { id: 'a4', name: 'Sarah Chen', initials: 'SC', color: '#8e44ad', locationType: 'partial', locations: ['Denver, CO', 'Miami, FL'] },
-    ],
-    requireAll: false,
-  },
-  {
-    id: 3,
-    title: 'Step 3',
-    approvers: [
-      { id: 'a5', name: 'Mark Rivera', initials: 'MR', color: '#c0392b', locationType: 'all', locations: [] },
-    ],
-    requireAll: false,
+    requireMode: 'any',
   },
 ];
 
-const AVAILABLE_APPROVERS: Approver[] = [
-  { id: 'n1', name: 'Lisa Park', initials: 'LP', color: '#16a085', locationType: 'all', locations: [] },
-  { id: 'n2', name: 'Tom Harris', initials: 'TH', color: '#d35400', locationType: 'partial', locations: ['Atlanta, GA'] },
-  { id: 'n3', name: 'Nina Foster', initials: 'NF', color: '#2980b9', locationType: 'all', locations: [] },
-];
+// ─── Avatar ─────────────────────────────────────────────────────────────────────
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function getCoverageStatus(step: Step): CoverageStatus {
-  if (step.approvers.length === 0) return 'empty';
-  if (step.approvers.some(a => a.locationType === 'all')) return 'covered';
-  return 'at-risk';
-}
-
-// ─── Avatar ───────────────────────────────────────────────────────────────────
-function Avatar({ initials, color, size = 28 }: { initials: string; color: string; size?: number }) {
+function Avatar({ initials, color, size = 24 }: { initials: string; color: string; size?: number }) {
   return (
     <div
-      style={{
-        width: size, height: size, backgroundColor: color, borderRadius: '50%',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: size * 0.36, color: 'white', fontWeight: 600, flexShrink: 0,
-      }}
+      style={{ width: size, height: size, backgroundColor: color, borderRadius: '50%', flexShrink: 0, fontSize: size * 0.38, fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      className="font-['Roboto:Medium',sans-serif]"
     >
       {initials}
     </div>
   );
 }
 
-// ─── Approver Chip ────────────────────────────────────────────────────────────
-function ApproverChip({ approver, onRemove, highlighted }: { approver: Approver; onRemove: () => void; highlighted: boolean }) {
+// ─── Location count label ────────────────────────────────────────────────────────
+
+function LocationLabel({ approver }: { approver: Approver }) {
+  if (approver.locationType === 'all') {
+    return <span className="text-[12px] text-[#1976d2] font-['Roboto:Regular',sans-serif]">All locations</span>;
+  }
+  return <span className="text-[12px] text-[#555] font-['Roboto:Regular',sans-serif]">{approver.locations.length} location{approver.locations.length !== 1 ? 's' : ''}</span>;
+}
+
+// ─── Approver Chip (inline in the input box) ────────────────────────────────────
+
+function ApproverChip({ approver, onRemove }: { approver: Approver; onRemove: () => void }) {
   return (
-    <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: 6,
-      padding: '4px 8px 4px 4px',
-      borderRadius: 20,
-      border: `1.5px solid ${highlighted ? '#ff9800' : approver.locationType === 'all' ? '#e3f0ff' : '#f0e6ff'}`,
-      background: highlighted ? '#fff8e1' : approver.locationType === 'all' ? '#f0f7ff' : '#faf0ff',
-      fontSize: 13,
-    }}>
-      <Avatar initials={approver.initials} color={approver.color} size={22} />
-      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-        <span style={{ color: '#212121', fontWeight: 500, whiteSpace: 'nowrap' }}>{approver.name}</span>
-        <span style={{ fontSize: 11, color: approver.locationType === 'all' ? '#1976d2' : '#7b52ab', fontWeight: 500 }}>
-          {approver.locationType === 'all' ? '✓ All locations' : `${approver.locations.length} location${approver.locations.length !== 1 ? 's' : ''}`}
-        </span>
-      </div>
-      <button
-        onClick={onRemove}
-        style={{ display: 'flex', alignItems: 'center', color: '#aaa', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 2 }}
-        title="Remove"
-      >
-        <XIcon size={11} />
+    <div className="inline-flex items-center gap-[6px] h-[28px] pl-[4px] pr-[6px] rounded-[4px] border border-[#e5e9f0] bg-white shrink-0">
+      <Avatar initials={approver.initials} color={approver.color} size={20} />
+      <span className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#212121] whitespace-nowrap">{approver.name}</span>
+      <button className="text-[#aaa] hover:text-[#555] flex items-center" onClick={e => { e.stopPropagation(); }}>
+        <Info size={14} />
+      </button>
+      <button className="text-[#aaa] hover:text-[#555] flex items-center" onClick={e => { e.stopPropagation(); onRemove(); }}>
+        <X size={13} />
       </button>
     </div>
   );
 }
 
-// ─── Coverage Banner ──────────────────────────────────────────────────────────
-function CoverageBanner({ status, onAddAllLocations }: { status: CoverageStatus; onAddAllLocations: () => void }) {
-  if (status === 'covered') {
-    return (
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '8px 12px', borderRadius: 6,
-        background: '#f0faf4', border: '1px solid #b7e4c7',
-        fontSize: 12, color: '#1e7e34',
-      }}>
-        <CheckCircle size={14} />
-        <span>Step has full location coverage — no posts will go unattended.</span>
+// ─── Location Popover ──────────────────────────────────────────────────────────
+
+function LocationPopover({ locations }: { locations: string[] }) {
+  return (
+    <div className="absolute left-full top-0 ml-[4px] z-30 bg-white border border-[#e5e9f0] rounded-[8px] shadow-[0_4px_16px_rgba(0,0,0,0.12)] w-[200px] py-[8px]">
+      <div className="px-[16px] pb-[6px]">
+        <span className="font-['Roboto:Medium',sans-serif] text-[12px] text-[#757575] uppercase tracking-[0.5px]">Locations</span>
       </div>
-    );
-  }
-  if (status === 'at-risk') {
-    return (
-      <div style={{
-        display: 'flex', alignItems: 'flex-start', gap: 8,
-        padding: '10px 12px', borderRadius: 6,
-        background: '#fff8e1', border: '1px solid #ffe082',
-        fontSize: 12,
-      }}>
-        <AlertTriangle size={14} className="text-orange-700 shrink-0 mt-[1px]" />
-        <div style={{ flex: 1 }}>
-          <div style={{ color: '#bf360c', fontWeight: 600, marginBottom: 2 }}>No all-locations approver on this step</div>
-          <div style={{ color: '#6d4c41', lineHeight: 1.5, marginBottom: 8 }}>
-            Posts for locations not covered by any approver will go unattended. Add at least one approver with access to all locations.
-          </div>
-          <button
-            onClick={onAddAllLocations}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              padding: '5px 12px', borderRadius: 4,
-              background: '#fff', border: '1px solid #ffb300',
-              color: '#e65100', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            <Plus size={12} /> Add all-locations approver
-          </button>
-        </div>
-      </div>
-    );
-  }
-  return null;
+      {locations.slice(0, 6).map(loc => (
+        <div key={loc} className="px-[16px] py-[5px] font-['Roboto:Regular',sans-serif] text-[13px] text-[#212121] hover:bg-[#f5f7ff] cursor-default">{loc}</div>
+      ))}
+    </div>
+  );
 }
 
-// ─── Step Card ────────────────────────────────────────────────────────────────
-function StepCard({
-  step, stepNumber, onRemoveApprover, onAddApprover, onDelete, totalSteps,
+// ─── Approver Dropdown ─────────────────────────────────────────────────────────
+
+function ApproverDropdown({
+  available, onAdd, onClose,
 }: {
-  step: Step; stepNumber: number;
-  onRemoveApprover: (stepId: number, approverId: string) => void;
-  onAddApprover: (stepId: number, approver: Approver) => void;
-  onDelete: (stepId: number) => void;
-  totalSteps: number;
+  available: Approver[];
+  onAdd: (a: Approver) => void;
+  onClose: () => void;
 }) {
-  const status = getCoverageStatus(step);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [requireAll, setRequireAll] = useState(step.requireAll);
+  const [search, setSearch] = useState('');
+  const [locationFilter, setLocationFilter] = useState<'all' | 'partial'>('all');
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
 
-  const existingIds = step.approvers.map(a => a.id);
-  const available = AVAILABLE_APPROVERS.filter(a => !existingIds.includes(a.id));
-  const allLocationsAvailable = available.filter(a => a.locationType === 'all');
-  const otherAvailable = available.filter(a => a.locationType === 'partial');
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
 
-  const handleAddAllLocations = () => {
-    if (allLocationsAvailable.length > 0) {
-      onAddApprover(step.id, allLocationsAvailable[0]);
-    }
-  };
-
-  return (
-    <div style={{
-      background: 'white', border: '1px solid #eaeaea', borderRadius: 10,
-      overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-    }}>
-      {/* Step header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '12px 16px', borderBottom: '1px solid #f5f5f5', background: '#fafafa',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ color: '#ccc', cursor: 'grab' }}><GripVertical size={14} /></div>
-          <div style={{
-            width: 22, height: 22, borderRadius: '50%',
-            background: '#1976d2', color: 'white',
-            fontSize: 11, fontWeight: 700,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>{stepNumber}</div>
-          <span style={{ fontSize: 14, fontWeight: 600, color: '#212121' }}>{step.title}</span>
-          {status === 'at-risk' && (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              padding: '2px 8px', borderRadius: 10,
-              background: '#fff3e0', border: '1px solid #ffe082',
-              fontSize: 11, color: '#e65100', fontWeight: 600,
-            }}>
-              <AlertTriangle size={10} /> Incomplete coverage
-            </span>
-          )}
-          {status === 'covered' && (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              padding: '2px 8px', borderRadius: 10,
-              background: '#f0faf4', border: '1px solid #b7e4c7',
-              fontSize: 11, color: '#1e7e34', fontWeight: 600,
-            }}>
-              <CheckCircle size={10} /> All locations covered
-            </span>
-          )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#555', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={requireAll}
-              onChange={e => setRequireAll(e.target.checked)}
-              style={{ accentColor: '#1976d2' }}
-            />
-            Require all approvers
-          </label>
-          {totalSteps > 1 && (
-            <button
-              onClick={() => onDelete(step.id)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', padding: 4, display: 'flex' }}
-              title="Delete step"
-            >
-              <Trash2 size={14} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Approvers area */}
-      <div style={{ padding: '14px 16px' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: step.approvers.length > 0 ? 12 : 0 }}>
-          {step.approvers.map(approver => (
-            <ApproverChip
-              key={approver.id}
-              approver={approver}
-              onRemove={() => onRemoveApprover(step.id, approver.id)}
-              highlighted={status === 'at-risk' && approver.locationType === 'partial'}
-            />
-          ))}
-
-          {/* Add approver button */}
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setShowDropdown(!showDropdown)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                padding: '5px 12px', borderRadius: 20,
-                border: '1.5px dashed #bbb', background: 'white',
-                fontSize: 13, color: '#555', cursor: 'pointer',
-              }}
-            >
-              <Plus size={12} /> Add approver <ChevronDown size={12} />
-            </button>
-            {showDropdown && (
-              <>
-                {/* Backdrop */}
-                <div
-                  style={{ position: 'fixed', inset: 0, zIndex: 9 }}
-                  onClick={() => setShowDropdown(false)}
-                />
-                <div style={{
-                  position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 10,
-                  background: 'white', border: '1px solid #e0e0e0', borderRadius: 8,
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-                  minWidth: 260, overflow: 'hidden',
-                }}>
-                  {allLocationsAvailable.length > 0 && (
-                    <>
-                      <div style={{ padding: '6px 12px 4px', fontSize: 11, color: '#1976d2', fontWeight: 700, background: '#f0f7ff', letterSpacing: 0.5 }}>
-                        ✓ ALL LOCATIONS
-                      </div>
-                      {allLocationsAvailable.map(a => (
-                        <button key={a.id}
-                          onClick={() => { onAddApprover(step.id, a); setShowDropdown(false); }}
-                          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
-                          onMouseEnter={e => (e.currentTarget.style.background = '#f5f5f5')}
-                          onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                        >
-                          <Avatar initials={a.initials} color={a.color} size={26} />
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 500, color: '#212121' }}>{a.name}</div>
-                            <div style={{ fontSize: 11, color: '#1976d2' }}>All locations</div>
-                          </div>
-                        </button>
-                      ))}
-                    </>
-                  )}
-                  {otherAvailable.length > 0 && (
-                    <>
-                      <div style={{ padding: '6px 12px 4px', fontSize: 11, color: '#7b52ab', fontWeight: 700, background: '#faf0ff', letterSpacing: 0.5 }}>
-                        SPECIFIC LOCATIONS
-                      </div>
-                      {otherAvailable.map(a => (
-                        <button key={a.id}
-                          onClick={() => { onAddApprover(step.id, a); setShowDropdown(false); }}
-                          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
-                          onMouseEnter={e => (e.currentTarget.style.background = '#f5f5f5')}
-                          onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                        >
-                          <Avatar initials={a.initials} color={a.color} size={26} />
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 500, color: '#212121' }}>{a.name}</div>
-                            <div style={{ fontSize: 11, color: '#7b52ab' }}>{a.locations.join(', ')}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </>
-                  )}
-                  {available.length === 0 && (
-                    <div style={{ padding: '12px', fontSize: 13, color: '#aaa' }}>No more approvers to add</div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Coverage banner */}
-        <CoverageBanner status={status} onAddAllLocations={handleAddAllLocations} />
-      </div>
-    </div>
+  const filtered = available.filter(a =>
+    a.name.toLowerCase().includes(search.toLowerCase())
   );
-}
 
-// ─── Legend ───────────────────────────────────────────────────────────────────
-function Legend() {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 20,
-      padding: '8px 14px', borderRadius: 8,
-      background: '#f5f8ff', border: '1px solid #e3ecff', fontSize: 12,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-        <div style={{ width: 10, height: 10, borderRadius: 3, background: '#e8f1ff', border: '1.5px solid #90caf9' }} />
-        <span style={{ color: '#1976d2', fontWeight: 500 }}>All locations</span>
-        <span style={{ color: '#888' }}>— covers every location</span>
-      </div>
-      <div style={{ width: 1, height: 16, background: '#dde' }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-        <div style={{ width: 10, height: 10, borderRadius: 3, background: '#f3e8ff', border: '1.5px solid #ce93d8' }} />
-        <span style={{ color: '#7b52ab', fontWeight: 500 }}>Partial locations</span>
-        <span style={{ color: '#888' }}>— covers selected locations only</span>
-      </div>
-      <div style={{ width: 1, height: 16, background: '#dde' }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-        <AlertTriangle size={11} className="text-orange-700" />
-        <span style={{ color: '#e65100', fontWeight: 500 }}>Incomplete coverage</span>
-        <span style={{ color: '#888' }}>— risk of unattended posts</span>
-      </div>
-    </div>
-  );
-}
-
-// ─── Global Coverage Bar ──────────────────────────────────────────────────────
-function GlobalCoverageBar({ steps }: { steps: Step[] }) {
-  const atRisk = steps.filter(s => getCoverageStatus(s) === 'at-risk').length;
-  const total = steps.length;
+  const hoveredApprover = filtered.find(a => a.id === hoveredId);
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '10px 16px', borderRadius: 8,
-      background: atRisk > 0 ? '#fff8e1' : '#f0faf4',
-      border: `1px solid ${atRisk > 0 ? '#ffe082' : '#b7e4c7'}`,
-      fontSize: 13,
-    }}>
-      {atRisk > 0 ? (
-        <>
-          <AlertTriangle size={16} className="text-orange-700 shrink-0" />
-          <span style={{ color: '#bf360c', fontWeight: 600 }}>{atRisk} of {total} step{atRisk !== 1 ? 's' : ''} missing full location coverage</span>
-          <span style={{ color: '#795548' }}>— posts may go unattended. Add an all-locations approver to each flagged step.</span>
-        </>
-      ) : (
-        <>
-          <CheckCircle size={16} className="text-green-700 shrink-0" />
-          <span style={{ color: '#1e7e34', fontWeight: 600 }}>All {total} steps have full location coverage</span>
-          <span style={{ color: '#555' }}>— workflow is ready to save.</span>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ─── Workflow List View ───────────────────────────────────────────────────────
-interface Workflow {
-  id: string;
-  name: string;
-  steps: number;
-  appliesTo: string;
-  status: 'active' | 'draft';
-}
-
-const MOCK_WORKFLOWS: Workflow[] = [
-  { id: 'wf1', name: 'Compliance check', steps: 3, appliesTo: 'All locations', status: 'active' },
-  { id: 'wf2', name: 'Legal review', steps: 2, appliesTo: '5 locations', status: 'active' },
-  { id: 'wf3', name: 'Brand approval', steps: 1, appliesTo: 'All locations', status: 'draft' },
-];
-
-function WorkflowList({ onEdit }: { onEdit: (wfId: string) => void }) {
-  return (
-    <div style={{ padding: '24px 32px', fontFamily: 'sans-serif' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: '#212121', margin: 0, marginBottom: 4 }}>Approval workflows</h1>
-          <p style={{ fontSize: 13, color: '#757575', margin: 0 }}>
-            Configure multi-step approval flows for social posts before they go live.
-          </p>
-        </div>
+    <div ref={ref} className="absolute top-full left-0 mt-[4px] z-20 bg-white border border-[#e5e9f0] rounded-[8px] shadow-[0_4px_20px_rgba(0,0,0,0.12)]" style={{ width: 460 }}>
+      {/* Filter header */}
+      <div className="flex items-center gap-[4px] px-[16px] pt-[12px] pb-[8px]">
+        <span className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#555]">Filter users</span>
         <button
-          onClick={() => onEdit('new')}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '9px 18px', borderRadius: 6,
-            background: '#1976d2', border: 'none',
-            color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          }}
+          className="inline-flex items-center gap-[2px] font-['Roboto:Regular',sans-serif] text-[13px] text-[#1976d2]"
+          onClick={() => setLocationFilter(locationFilter === 'all' ? 'partial' : 'all')}
         >
-          <Plus size={14} /> New workflow
+          {locationFilter === 'all' ? 'All locations' : 'Specific locations'}
+          <ChevronDown size={14} />
         </button>
       </div>
 
-      {/* Info banner */}
-      <div style={{
-        display: 'flex', gap: 10, padding: '12px 16px',
-        background: '#f0f7ff', border: '1px solid #bbdefb',
-        borderRadius: 8, marginBottom: 20, fontSize: 13, color: '#1565c0',
-      }}>
-        <InfoIcon size={16} />
-        <span>
-          Approval workflows ensure posts are reviewed before publishing. Each workflow can have up to 10 sequential steps with location-specific approvers.
-        </span>
+      {/* Search */}
+      <div className="relative px-[8px] pb-[8px]">
+        <Search size={14} className="absolute left-[20px] top-[50%] -translate-y-1/2 text-[#aaa] pointer-events-none" />
+        <input
+          autoFocus
+          type="text"
+          placeholder="Search"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full h-[36px] pl-[34px] pr-[12px] border border-[#e5e9f0] rounded-[6px] font-['Roboto:Regular',sans-serif] text-[13px] text-[#212121] outline-none focus:border-[#1976d2] placeholder-[#aaa]"
+        />
       </div>
 
-      {/* Workflow cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {MOCK_WORKFLOWS.map(wf => (
-          <div key={wf.id} style={{
-            background: 'white', border: '1px solid #eaeaea', borderRadius: 10,
-            padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 8,
-                background: '#f0f7ff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <Settings2 size={18} />
-              </div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#212121', marginBottom: 2 }}>{wf.name}</div>
-                <div style={{ fontSize: 12, color: '#757575', display: 'flex', gap: 12 }}>
-                  <span>{wf.steps} step{wf.steps !== 1 ? 's' : ''}</span>
-                  <span>·</span>
-                  <span>{wf.appliesTo}</span>
+      {/* User list */}
+      <div className="max-h-[240px] overflow-y-auto">
+        {filtered.length === 0 ? (
+          <div className="px-[16px] py-[12px] font-['Roboto:Regular',sans-serif] text-[13px] text-[#aaa]">No users found</div>
+        ) : (
+          filtered.map(approver => (
+            <div
+              key={approver.id}
+              className="relative flex items-center gap-[10px] px-[12px] py-[8px] cursor-pointer hover:bg-[#f5f7ff]"
+              onClick={() => { onAdd(approver); onClose(); }}
+              onMouseEnter={() => setHoveredId(approver.id)}
+              onMouseLeave={() => setHoveredId(null)}
+            >
+              <Avatar initials={approver.initials} color={approver.color} size={28} />
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#212121]">{approver.name}</span>
+                <div className="flex items-center gap-[4px]">
+                  {approver.locationType === 'all' ? (
+                    <span className="font-['Roboto:Regular',sans-serif] text-[12px] text-[#1976d2]">All locations</span>
+                  ) : (
+                    <>
+                      <span className="font-['Roboto:Regular',sans-serif] text-[12px] text-[#555]">
+                        {approver.locations.length} location{approver.locations.length !== 1 ? 's' : ''}
+                      </span>
+                      <ChevronDown size={13} className="text-[#555]" />
+                    </>
+                  )}
                 </div>
               </div>
+              {/* Location popover on hover for partial */}
+              {hoveredId === approver.id && approver.locationType === 'partial' && approver.locations.length > 0 && (
+                <LocationPopover locations={approver.locations} />
+              )}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{
-                padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600,
-                background: wf.status === 'active' ? '#f0faf4' : '#f5f5f5',
-                color: wf.status === 'active' ? '#1e7e34' : '#757575',
-                border: `1px solid ${wf.status === 'active' ? '#b7e4c7' : '#e0e0e0'}`,
-              }}>
-                {wf.status === 'active' ? 'Active' : 'Draft'}
-              </span>
-              <button
-                onClick={() => onEdit(wf.id)}
-                style={{
-                  padding: '6px 14px', borderRadius: 5,
-                  border: '1px solid #e0e0e0', background: 'white',
-                  fontSize: 13, color: '#212121', cursor: 'pointer', fontWeight: 500,
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#f5f5f5')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'white')}
-              >
-                Edit
-              </button>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
 }
 
-// ─── Workflow Editor ──────────────────────────────────────────────────────────
-function WorkflowEditor({ workflowId, onBack }: { workflowId: string; onBack: () => void }) {
-  const [steps, setSteps] = useState<Step[]>(INITIAL_STEPS);
-  const [workflowName, setWorkflowName] = useState(
-    workflowId === 'wf2' ? 'Legal review' : workflowId === 'wf3' ? 'Brand approval' : 'Compliance check'
-  );
-  const [saved, setSaved] = useState(false);
+// ─── Step Card ─────────────────────────────────────────────────────────────────
 
-  const removeApprover = (stepId: number, approverId: string) => {
-    setSteps(prev => prev.map(s =>
-      s.id === stepId ? { ...s, approvers: s.approvers.filter(a => a.id !== approverId) } : s
-    ));
+function StepCard({
+  step, stepIndex, onUpdate, onDelete, canDelete,
+}: {
+  step: Step;
+  stepIndex: number;
+  onUpdate: (updated: Step) => void;
+  onDelete: () => void;
+  canDelete: boolean;
+}) {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState(step.name);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const chipAreaRef = useRef<HTMLDivElement>(null);
+
+  const available = ALL_APPROVERS.filter(a => !step.approvers.find(s => s.id === a.id));
+  const approversLeft = ALL_APPROVERS.length - step.approvers.length;
+
+  const removeApprover = (id: string) => {
+    onUpdate({ ...step, approvers: step.approvers.filter(a => a.id !== id) });
   };
 
-  const addApprover = (stepId: number, approver: Approver) => {
-    setSteps(prev => prev.map(s =>
-      s.id === stepId ? { ...s, approvers: [...s.approvers, approver] } : s
-    ));
+  const addApprover = (a: Approver) => {
+    onUpdate({ ...step, approvers: [...step.approvers, a] });
   };
 
-  const deleteStep = (stepId: number) => {
-    setSteps(prev => prev.filter(s => s.id !== stepId));
-  };
-
-  const addStep = () => {
-    if (steps.length >= 10) return;
-    const newId = Math.max(...steps.map(s => s.id)) + 1;
-    setSteps(prev => [...prev, { id: newId, title: `Step ${newId}`, approvers: [], requireAll: false }]);
-  };
-
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  const finishEditName = () => {
+    setEditingName(false);
+    onUpdate({ ...step, name: nameValue || `Step ${stepIndex + 1}` });
   };
 
   return (
-    <div style={{ minHeight: '100%', background: '#f5f6fa', fontFamily: 'sans-serif' }}>
-      {/* Editor top bar */}
-      <div style={{
-        background: 'white', borderBottom: '1px solid #eaeaea',
-        padding: '0 24px', height: 52,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        position: 'sticky', top: 0, zIndex: 5,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button
-            onClick={onBack}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#757575', fontSize: 13 }}
-          >
-            <ArrowLeft size={15} /> Back
-          </button>
-          <span style={{ color: '#e0e0e0' }}>|</span>
-          <span style={{ fontSize: 13, color: '#757575' }}>Settings</span>
-          <span style={{ color: '#ccc' }}>›</span>
-          <span style={{ fontSize: 13, color: '#757575' }}>Approvals</span>
-          <span style={{ color: '#ccc' }}>›</span>
-          <span style={{ fontSize: 14, color: '#212121', fontWeight: 600 }}>{workflowName}</span>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {saved && (
-            <span style={{ fontSize: 12, color: '#1e7e34', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <CheckCircle size={13} /> Saved
-            </span>
-          )}
-          <button
-            onClick={onBack}
-            style={{ padding: '7px 16px', borderRadius: 5, border: '1px solid #e0e0e0', background: 'white', fontSize: 13, cursor: 'pointer', color: '#555' }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            style={{ padding: '7px 16px', borderRadius: 5, border: 'none', background: '#1976d2', fontSize: 13, cursor: 'pointer', color: 'white', fontWeight: 600 }}
-          >
-            Save workflow
-          </button>
-        </div>
-      </div>
-
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '24px 24px 48px' }}>
-        {/* Workflow info card */}
-        <div style={{ background: 'white', border: '1px solid #eaeaea', borderRadius: 10, padding: '16px 20px', marginBottom: 16 }}>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 4 }}>WORKFLOW NAME</label>
-            <input
-              value={workflowName}
-              onChange={e => setWorkflowName(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: 4, fontSize: 14, boxSizing: 'border-box', outline: 'none' }}
-              onFocus={e => (e.target.style.borderColor = '#1976d2')}
-              onBlur={e => (e.target.style.borderColor = '#e0e0e0')}
-            />
-          </div>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 4 }}>APPLIES TO</label>
-            <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', border: '1px solid #e0e0e0', borderRadius: 4, background: 'white', fontSize: 13, color: '#555', cursor: 'pointer' }}>
-              All locations <ChevronDown size={13} />
-            </button>
-          </div>
+    <div className="bg-white border border-[#e5e9f0] rounded-[8px] overflow-visible">
+      {/* Step header */}
+      <div className="flex items-center gap-[10px] px-[20px] pt-[20px] pb-[12px]">
+        {/* Green check circle */}
+        <div className="w-[24px] h-[24px] rounded-full bg-[#34a853] flex items-center justify-center shrink-0">
+          <Check size={14} color="white" strokeWidth={2.5} />
         </div>
 
-        {/* Legend */}
-        <div style={{ marginBottom: 14 }}><Legend /></div>
-
-        {/* Global coverage status */}
-        <div style={{ marginBottom: 20 }}><GlobalCoverageBar steps={steps} /></div>
-
-        {/* Steps */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {steps.map((step, i) => (
-            <StepCard
-              key={step.id}
-              step={step}
-              stepNumber={i + 1}
-              totalSteps={steps.length}
-              onRemoveApprover={removeApprover}
-              onAddApprover={addApprover}
-              onDelete={deleteStep}
-            />
-          ))}
-        </div>
-
-        {/* Add step */}
-        {steps.length < 10 && (
-          <button
-            onClick={addStep}
-            style={{
-              marginTop: 14, width: '100%', padding: '12px',
-              border: '2px dashed #d0d0d0', borderRadius: 10,
-              background: 'white', color: '#888', fontSize: 14,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#1976d2'; e.currentTarget.style.color = '#1976d2'; e.currentTarget.style.background = '#f0f7ff'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#d0d0d0'; e.currentTarget.style.color = '#888'; e.currentTarget.style.background = 'white'; }}
-          >
-            <Plus size={14} /> Add step ({steps.length}/10)
-          </button>
+        {/* Step name + edit */}
+        {editingName ? (
+          <input
+            ref={inputRef}
+            autoFocus
+            value={nameValue}
+            onChange={e => setNameValue(e.target.value)}
+            onBlur={finishEditName}
+            onKeyDown={e => { if (e.key === 'Enter') finishEditName(); }}
+            className="font-['Roboto:Medium',sans-serif] text-[16px] text-[#212121] border-b border-[#1976d2] outline-none bg-transparent"
+            style={{ fontVariationSettings: "'wdth' 100" }}
+          />
+        ) : (
+          <span className="font-['Roboto:Medium',sans-serif] text-[16px] text-[#212121]" style={{ fontVariationSettings: "'wdth' 100" }}>
+            {step.name}
+          </span>
         )}
 
-        {/* Bottom explainer */}
-        <div style={{
-          marginTop: 20, padding: '12px 16px', borderRadius: 8,
-          background: '#f0f7ff', border: '1px solid #bbdefb',
-          fontSize: 12, color: '#1565c0', lineHeight: 1.6,
-          display: 'flex', gap: 8,
-        }}>
-          <InfoIcon size={14} />
-          <span>
-            <strong>Why does this matter?</strong> If a post needs approval but no approver covers a given location, that location's post will be stuck in "awaiting" until the scheduled time passes and expires. Adding at least one <strong>all-locations</strong> approver per step ensures every post always has someone who can act on it.
+        <button
+          className="text-[#aaa] hover:text-[#1976d2]"
+          onClick={() => { setEditingName(true); setTimeout(() => inputRef.current?.focus(), 0); }}
+        >
+          <Pencil size={15} />
+        </button>
+
+        {canDelete && (
+          <button className="ml-auto text-[#aaa] hover:text-[#bf170a]" onClick={onDelete}>
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
+      {/* Require mode row */}
+      <div className="px-[20px] pb-[12px] flex items-center gap-[6px]">
+        <span className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#555]">Require approval from</span>
+        <button className="inline-flex items-center gap-[2px] font-['Roboto:Regular',sans-serif] text-[13px] text-[#1976d2]">
+          {step.requireMode === 'any' ? 'any' : 'all'}
+          <ChevronDown size={14} />
+        </button>
+        <span className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#555]">of these approvers</span>
+      </div>
+
+      {/* Approvers label + chip input box */}
+      <div className="px-[20px] pb-[20px]">
+        <div className="mb-[6px]">
+          <span className="font-['Roboto:Regular',sans-serif] text-[12px] text-[#757575]">Approvers<span className="text-[#bf170a]">*</span></span>
+        </div>
+
+        {/* Chip input area */}
+        <div className="relative">
+          <div
+            ref={chipAreaRef}
+            className="flex flex-wrap items-center gap-[6px] min-h-[44px] px-[8px] py-[6px] border border-[#e5e9f0] rounded-[6px] cursor-text focus-within:border-[#1976d2] transition-colors"
+            onClick={() => { if (!showDropdown && available.length > 0) setShowDropdown(true); }}
+          >
+            {step.approvers.map(a => (
+              <ApproverChip key={a.id} approver={a} onRemove={() => removeApprover(a.id)} />
+            ))}
+            {/* Blinking cursor input */}
+            <input
+              type="text"
+              className="outline-none border-none bg-transparent font-['Roboto:Regular',sans-serif] text-[13px] text-[#212121] placeholder-[#bbb] min-w-[40px] flex-1"
+              placeholder={step.approvers.length === 0 ? 'Aa' : ''}
+              onFocus={() => { if (available.length > 0) setShowDropdown(true); }}
+              readOnly
+            />
+          </div>
+
+          {/* Dropdown */}
+          {showDropdown && (
+            <ApproverDropdown
+              available={available}
+              onAdd={addApprover}
+              onClose={() => setShowDropdown(false)}
+            />
+          )}
+        </div>
+
+        {/* Approvers left */}
+        <div className="mt-[6px]">
+          <span className="font-['Roboto:Regular',sans-serif] text-[12px] text-[#aaa]">
+            {approversLeft} approver{approversLeft !== 1 ? 's' : ''} left
           </span>
         </div>
       </div>
@@ -718,18 +343,282 @@ function WorkflowEditor({ workflowId, onBack }: { workflowId: string; onBack: ()
   );
 }
 
-// ─── Main Export ──────────────────────────────────────────────────────────────
-export function ApprovalsSetupView() {
-  const [editingWorkflowId, setEditingWorkflowId] = useState<string | null>(null);
+// ─── Workflow Editor ────────────────────────────────────────────────────────────
 
-  if (editingWorkflowId) {
+function WorkflowEditor({ workflow, onBack }: { workflow: Workflow; onBack: () => void }) {
+  const [name, setName] = useState(workflow.name);
+  const [editingName, setEditingName] = useState(false);
+  const [steps, setSteps] = useState<Step[]>(DEFAULT_STEPS);
+  const [saved, setSaved] = useState(false);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  const updateStep = (id: number, updated: Step) => {
+    setSteps(prev => prev.map(s => s.id === id ? updated : s));
+  };
+
+  const deleteStep = (id: number) => {
+    setSteps(prev => prev.filter(s => s.id !== id));
+  };
+
+  const addStep = () => {
+    if (steps.length >= 10) return;
+    const newId = Math.max(...steps.map(s => s.id), 0) + 1;
+    setSteps(prev => [...prev, { id: newId, name: `Step ${newId}`, approvers: [], requireMode: 'any' }]);
+  };
+
+  const handleSave = () => {
+    setSaved(true);
+    setTimeout(() => { setSaved(false); onBack(); }, 1200);
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-white">
+      {/* Breadcrumb + header row */}
+      <div className="border-b border-[#eaeaea] px-[24px] shrink-0">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-[6px] pt-[12px] pb-[4px]">
+          <button
+            onClick={onBack}
+            className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#1976d2] hover:underline"
+          >
+            Approvals
+          </button>
+          <ChevronDown size={13} className="text-[#aaa] -rotate-90" />
+          <span className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#1976d2]">{name}</span>
+        </div>
+
+        {/* Title + actions */}
+        <div className="flex items-center justify-between py-[10px]">
+          <div className="flex items-center gap-[8px]">
+            {editingName ? (
+              <input
+                ref={nameRef}
+                autoFocus
+                value={name}
+                onChange={e => setName(e.target.value)}
+                onBlur={() => setEditingName(false)}
+                onKeyDown={e => { if (e.key === 'Enter') setEditingName(false); }}
+                className="font-['Roboto:Regular',sans-serif] font-normal text-[22px] text-[#212121] border-b-2 border-[#1976d2] outline-none bg-transparent"
+                style={{ fontVariationSettings: "'wdth' 100" }}
+              />
+            ) : (
+              <h1
+                className="font-['Roboto:Regular',sans-serif] font-normal text-[22px] text-[#212121] tracking-[-0.44px]"
+                style={{ fontVariationSettings: "'wdth' 100" }}
+              >
+                {name}
+              </h1>
+            )}
+            <button
+              className="text-[#aaa] hover:text-[#1976d2] mt-[2px]"
+              onClick={() => { setEditingName(true); setTimeout(() => nameRef.current?.focus(), 0); }}
+            >
+              <Pencil size={16} />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-[8px]">
+            {saved && (
+              <span className="font-['Roboto:Regular',sans-serif] text-[13px] text-[#34a853] flex items-center gap-[4px]">
+                <Check size={14} /> Saved
+              </span>
+            )}
+            <button
+              onClick={handleSave}
+              className="h-[36px] px-[20px] rounded-[4px] bg-[#1976d2] font-['Roboto:Regular',sans-serif] text-[14px] text-white hover:bg-[#1565c0] transition-colors"
+            >
+              Save
+            </button>
+            <button className="h-[36px] w-[36px] flex items-center justify-center rounded-[4px] border border-[#e5e9f0] bg-white hover:bg-[#f5f5f5]">
+              <MoreVertical size={16} className="text-[#555]" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Steps */}
+      <div className="flex-1 overflow-y-auto px-[24px] py-[20px]">
+        <div className="max-w-[860px] mx-auto flex flex-col gap-[12px]">
+          {steps.map((step, i) => (
+            <StepCard
+              key={step.id}
+              step={step}
+              stepIndex={i}
+              onUpdate={updated => updateStep(step.id, updated)}
+              onDelete={() => deleteStep(step.id)}
+              canDelete={steps.length > 1}
+            />
+          ))}
+
+          {/* Add step button */}
+          {steps.length < 10 && (
+            <button
+              onClick={addStep}
+              className="flex items-center gap-[10px] w-full px-[20px] py-[14px] border border-dashed border-[#d0d0d0] rounded-[8px] text-[#1976d2] hover:border-[#1976d2] hover:bg-[#f0f7ff] transition-colors"
+            >
+              <div className="w-[22px] h-[22px] rounded-full border-2 border-[#1976d2] flex items-center justify-center shrink-0">
+                <Plus size={13} strokeWidth={2.5} />
+              </div>
+              <span className="font-['Roboto:Regular',sans-serif] text-[14px]">Add step</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Workflow List ──────────────────────────────────────────────────────────────
+
+function WorkflowList({ onEdit, onCreate }: { onEdit: (wf: Workflow) => void; onCreate: () => void }) {
+  const [workflows, setWorkflows] = useState(WORKFLOWS);
+  const [sortCol, setSortCol] = useState<'name' | 'status' | 'lastUpdated' | 'updatedBy'>('lastUpdated');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [search, setSearch] = useState('');
+
+  const toggleSort = (col: typeof sortCol) => {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+
+  const filtered = workflows.filter(w =>
+    w.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const SortIcon = ({ col }: { col: typeof sortCol }) => (
+    <ChevronDown
+      size={13}
+      className={`text-[#aaa] transition-transform ${sortCol === col && sortDir === 'asc' ? 'rotate-180' : ''}`}
+    />
+  );
+
+  const ColHeader = ({ col, label }: { col: typeof sortCol; label: string }) => (
+    <th
+      className="text-left py-[10px] px-[16px] cursor-pointer select-none"
+      onClick={() => toggleSort(col)}
+    >
+      <div className="flex items-center gap-[4px]">
+        <span className="font-['Roboto:Medium',sans-serif] text-[13px] text-[#555]">{label}</span>
+        <SortIcon col={col} />
+      </div>
+    </th>
+  );
+
+  const toggleStatus = (id: string) => {
+    setWorkflows(prev => prev.map(w =>
+      w.id === id ? { ...w, status: w.status === 'Enabled' ? 'Disabled' : 'Enabled' } : w
+    ));
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Page header */}
+      <div className="border-b border-[#eaeaea] px-[24px] h-[64px] flex items-center justify-between shrink-0 bg-white">
+        <h1 className="font-['Roboto:Regular',sans-serif] font-normal text-[20px] text-[#212121] tracking-[-0.4px]" style={{ fontVariationSettings: "'wdth' 100" }}>
+          {workflows.length} Approvals
+        </h1>
+        <div className="flex items-center gap-[8px]">
+          <button className="h-[36px] w-[36px] flex items-center justify-center rounded-[4px] hover:bg-[#f5f5f5]">
+            <Search size={18} className="text-[#555]" />
+          </button>
+          <button
+            onClick={onCreate}
+            className="h-[36px] px-[16px] flex items-center gap-[6px] rounded-[4px] bg-[#1976d2] font-['Roboto:Regular',sans-serif] text-[14px] text-white hover:bg-[#1565c0] transition-colors"
+          >
+            Create approval
+          </button>
+          <button className="h-[36px] w-[36px] flex items-center justify-center rounded-[4px] hover:bg-[#f5f5f5]">
+            <MoreVertical size={18} className="text-[#555]" />
+          </button>
+          <button className="h-[36px] w-[36px] flex items-center justify-center rounded-[4px] hover:bg-[#f5f5f5]">
+            <SlidersHorizontal size={18} className="text-[#555]" />
+          </button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="flex-1 overflow-y-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-[#eaeaea] bg-white sticky top-0">
+              <ColHeader col="name" label="Name" />
+              <ColHeader col="status" label="Status" />
+              <ColHeader col="lastUpdated" label="Last updated" />
+              <ColHeader col="updatedBy" label="Updated by" />
+              <th className="w-[60px]" />
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(wf => (
+              <tr
+                key={wf.id}
+                className="border-b border-[#eaeaea] hover:bg-[#fafafa] cursor-pointer group"
+                onClick={() => onEdit(wf)}
+              >
+                <td className="py-[14px] px-[16px]">
+                  <span className="font-['Roboto:Regular',sans-serif] text-[14px] text-[#212121]">{wf.name}</span>
+                </td>
+                <td className="py-[14px] px-[16px]">
+                  <span
+                    className="px-[10px] py-[3px] rounded-[4px] font-['Roboto:Regular',sans-serif] text-[13px] cursor-pointer select-none"
+                    style={{
+                      background: wf.status === 'Enabled' ? '#e8f5e9' : '#f5f5f5',
+                      color:      wf.status === 'Enabled' ? '#2e7d32' : '#757575',
+                    }}
+                    onClick={e => { e.stopPropagation(); toggleStatus(wf.id); }}
+                  >
+                    {wf.status}
+                  </span>
+                </td>
+                <td className="py-[14px] px-[16px]">
+                  <span className="font-['Roboto:Regular',sans-serif] text-[14px] text-[#555]">{wf.lastUpdated}</span>
+                </td>
+                <td className="py-[14px] px-[16px]">
+                  <span className="font-['Roboto:Regular',sans-serif] text-[14px] text-[#555]">{wf.updatedBy}</span>
+                </td>
+                <td className="py-[14px] px-[16px]">
+                  <button
+                    className="opacity-0 group-hover:opacity-100 text-[#aaa] hover:text-[#555]"
+                    onClick={e => { e.stopPropagation(); }}
+                  >
+                    <MoreVertical size={16} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Export ────────────────────────────────────────────────────────────────
+
+export function ApprovalsSetupView() {
+  const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
+
+  const newWorkflow: Workflow = {
+    id: 'new',
+    name: 'New workflow',
+    status: 'Disabled',
+    lastUpdated: 'Today',
+    updatedBy: 'You',
+  };
+
+  if (editingWorkflow) {
     return (
       <WorkflowEditor
-        workflowId={editingWorkflowId}
-        onBack={() => setEditingWorkflowId(null)}
+        workflow={editingWorkflow}
+        onBack={() => setEditingWorkflow(null)}
       />
     );
   }
 
-  return <WorkflowList onEdit={id => setEditingWorkflowId(id)} />;
+  return (
+    <WorkflowList
+      onEdit={setEditingWorkflow}
+      onCreate={() => setEditingWorkflow(newWorkflow)}
+    />
+  );
 }
