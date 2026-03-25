@@ -1,8 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import {
   Search, Plus, MoreVertical, ChevronDown, X, Info,
-  Check, Pencil, SlidersHorizontal
+  Check, Pencil, SlidersHorizontal, AlertTriangle
 } from 'lucide-react';
+
+// ─── Coverage helper ────────────────────────────────────────────────────────────
+function hasAllLocationsApprover(step: { approvers: { locationType: string }[] }) {
+  return step.approvers.some(a => a.locationType === 'all');
+}
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -175,8 +180,10 @@ function ApproverDropdown({
       <div className="max-h-[240px] overflow-y-auto">
         {filtered.length === 0 ? (
           <div className="px-[16px] py-[12px] font-['Roboto:Regular',sans-serif] text-[13px] text-[#aaa]">No users found</div>
-        ) : (
-          filtered.map(approver => (
+        ) : (() => {
+          const allLoc   = filtered.filter(a => a.locationType === 'all');
+          const partial  = filtered.filter(a => a.locationType === 'partial');
+          const renderRow = (approver: Approver) => (
             <div
               key={approver.id}
               className="relative flex items-center gap-[10px] px-[12px] py-[8px] cursor-pointer hover:bg-[#f5f7ff]"
@@ -200,13 +207,28 @@ function ApproverDropdown({
                   )}
                 </div>
               </div>
-              {/* Location popover on hover for partial */}
               {hoveredId === approver.id && approver.locationType === 'partial' && approver.locations.length > 0 && (
                 <LocationPopover locations={approver.locations} />
               )}
             </div>
-          ))
-        )}
+          );
+          return (
+            <>
+              {allLoc.length > 0 && (
+                <>
+                  {/* Recommended section label — subtle */}
+                  <div className="px-[12px] pt-[6px] pb-[2px] flex items-center gap-[4px]">
+                    <span className="font-['Roboto:Medium',sans-serif] text-[11px] text-[#1976d2] uppercase tracking-[0.5px]">Recommended</span>
+                    <span className="font-['Roboto:Regular',sans-serif] text-[11px] text-[#aaa]">· covers all locations</span>
+                  </div>
+                  {allLoc.map(renderRow)}
+                  {partial.length > 0 && <div className="mx-[12px] my-[4px] border-t border-[#f0f0f0]" />}
+                </>
+              )}
+              {partial.map(renderRow)}
+            </>
+          );
+        })()}
       </div>
     </div>
   );
@@ -231,6 +253,7 @@ function StepCard({
 
   const available = ALL_APPROVERS.filter(a => !step.approvers.find(s => s.id === a.id));
   const approversLeft = ALL_APPROVERS.length - step.approvers.length;
+  const covered = hasAllLocationsApprover(step);
 
   const removeApprover = (id: string) => {
     onUpdate({ ...step, approvers: step.approvers.filter(a => a.id !== id) });
@@ -249,9 +272,15 @@ function StepCard({
     <div className="bg-white border border-[#e5e9f0] rounded-[8px] overflow-visible">
       {/* Step header */}
       <div className="flex items-center gap-[10px] px-[20px] pt-[20px] pb-[12px]">
-        {/* Green check circle */}
-        <div className="w-[24px] h-[24px] rounded-full bg-[#34a853] flex items-center justify-center shrink-0">
-          <Check size={14} color="white" strokeWidth={2.5} />
+        {/* Status circle — green when covered, amber when not */}
+        <div
+          className="w-[24px] h-[24px] rounded-full flex items-center justify-center shrink-0 transition-colors"
+          style={{ backgroundColor: covered ? '#34a853' : '#f59e0b' }}
+        >
+          {covered
+            ? <Check size={14} color="white" strokeWidth={2.5} />
+            : <AlertTriangle size={13} color="white" strokeWidth={2.5} />
+          }
         </div>
 
         {/* Step name + edit */}
@@ -332,11 +361,17 @@ function StepCard({
           )}
         </div>
 
-        {/* Approvers left */}
-        <div className="mt-[6px]">
+        {/* Approvers left + subtle coverage hint */}
+        <div className="mt-[6px] flex items-center justify-between">
           <span className="font-['Roboto:Regular',sans-serif] text-[12px] text-[#aaa]">
             {approversLeft} approver{approversLeft !== 1 ? 's' : ''} left
           </span>
+          {!covered && step.approvers.length > 0 && (
+            <span className="flex items-center gap-[4px] font-['Roboto:Regular',sans-serif] text-[12px] text-[#f59e0b]">
+              <AlertTriangle size={12} />
+              Add an all-locations approver to avoid unattended posts
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -350,7 +385,10 @@ function WorkflowEditor({ workflow, onBack }: { workflow: Workflow; onBack: () =
   const [editingName, setEditingName] = useState(false);
   const [steps, setSteps] = useState<Step[]>(DEFAULT_STEPS);
   const [saved, setSaved] = useState(false);
+  const [showCoverageWarning, setShowCoverageWarning] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
+
+  const allStepsCovered = steps.every(hasAllLocationsApprover);
 
   const updateStep = (id: number, updated: Step) => {
     setSteps(prev => prev.map(s => s.id === id ? updated : s));
@@ -367,7 +405,13 @@ function WorkflowEditor({ workflow, onBack }: { workflow: Workflow; onBack: () =
   };
 
   const handleSave = () => {
+    if (!allStepsCovered && !showCoverageWarning) {
+      // First click: surface the warning, don't block
+      setShowCoverageWarning(true);
+      return;
+    }
     setSaved(true);
+    setShowCoverageWarning(false);
     setTimeout(() => { setSaved(false); onBack(); }, 1200);
   };
 
@@ -423,11 +467,18 @@ function WorkflowEditor({ workflow, onBack }: { workflow: Workflow; onBack: () =
                 <Check size={14} /> Saved
               </span>
             )}
+            {/* Subtle coverage warning — only shown on first save attempt if gaps exist */}
+            {showCoverageWarning && !saved && (
+              <span className="font-['Roboto:Regular',sans-serif] text-[12px] text-[#f59e0b] flex items-center gap-[4px]">
+                <AlertTriangle size={13} />
+                Some steps may leave posts unattended. Save anyway?
+              </span>
+            )}
             <button
               onClick={handleSave}
               className="h-[36px] px-[20px] rounded-[4px] bg-[#1976d2] font-['Roboto:Regular',sans-serif] text-[14px] text-white hover:bg-[#1565c0] transition-colors"
             >
-              Save
+              {showCoverageWarning ? 'Save anyway' : 'Save'}
             </button>
             <button className="h-[36px] w-[36px] flex items-center justify-center rounded-[4px] border border-[#e5e9f0] bg-white hover:bg-[#f5f5f5]">
               <MoreVertical size={16} className="text-[#555]" />

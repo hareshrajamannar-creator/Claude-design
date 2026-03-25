@@ -497,6 +497,24 @@ export const POST_ACTIVITIES: Record<string, Activity[]> = {
     },
   ],
 
+  // post-6: AI-suggested — generation + review lifecycle
+  'post-6': [
+    {
+      id: '1',
+      type: 'ai_generated',
+      user: { name: 'AI Assistant', avatar: 'gradient' },
+      timestamp: 'just now',
+      description: 'generated this post suggestion based on top-performing content for Los Angeles',
+    },
+    {
+      id: '2',
+      type: 'ai_generated',
+      user: { name: 'AI Assistant', avatar: 'gradient' },
+      timestamp: '2 hours ago',
+      description: 'analyzed 30 days of engagement data and identified sweat equity as a trending topic for your audience',
+    },
+  ],
+
   // post-7: Scheduled — rich lifecycle
   'post-7': [
     {
@@ -628,6 +646,67 @@ export const POST_ACTIVITIES: Record<string, Activity[]> = {
       user: { name: 'Sarah Mitchell', avatar: 'gradient' },
       timestamp: 'Mar 3, 2026 9:00 AM',
       description: 'created this post',
+    },
+  ],
+
+  // post-8: AI-suggested — generation lifecycle (New York)
+  'post-8': [
+    {
+      id: '1',
+      type: 'ai_generated',
+      user: { name: 'AI Assistant', avatar: 'gradient' },
+      timestamp: 'just now',
+      description: 'generated this post suggestion based on top-performing content for New York',
+    },
+    {
+      id: '2',
+      type: 'ai_generated',
+      user: { name: 'AI Assistant', avatar: 'gradient' },
+      timestamp: '3 hours ago',
+      description: 'identified first-time homebuyer encouragement as a high-engagement theme for your New York audience',
+    },
+  ],
+
+  // post-9: Rejected — rejection + submission lifecycle (Atlanta Midtown)
+  'post-9': [
+    {
+      id: '1',
+      type: 'rejected',
+      user: { name: 'Brand Compliance', avatar: 'gradient' },
+      timestamp: 'Mar 4, 2026 2:15 PM',
+      description: 'rejected this post',
+      details: {
+        rejectionReason: 'Caption references incorrect loan program details. Please update to reflect current Motto Mortgage Atlanta Midtown offerings before resubmitting.',
+      },
+    },
+    {
+      id: '2',
+      type: 'scheduled',
+      user: { name: 'Ana Perez', avatar: 'gradient' },
+      timestamp: 'Mar 4, 2026 10:00 AM',
+      description: 'submitted this post for approval at 1 location',
+      details: {
+        count: 1,
+        locations: ['Motto Mortgage Atlanta Midtown'],
+      },
+    },
+    {
+      id: '3',
+      type: 'caption_edited',
+      user: { name: 'Ana Perez', avatar: 'gradient' },
+      timestamp: 'Mar 3, 2026 4:30 PM',
+      description: 'edited the post caption',
+      details: {
+        before: 'Buyers can now use earnest money to stand out. #MotoMortgage #AtlantaMidtown',
+        after: "Buyers pay sellers earnest money to show they are serious about purchasing. 🏡 #BuyersPaySellers #EarnestMoney #MotoMortgage",
+      },
+    },
+    {
+      id: '4',
+      type: 'created',
+      user: { name: 'Ana Perez', avatar: 'gradient' },
+      timestamp: 'Mar 3, 2026 2:00 PM',
+      description: 'created this post for the Atlanta Midtown location',
     },
   ],
 };

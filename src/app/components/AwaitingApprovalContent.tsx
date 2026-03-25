@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { CheckCircle, Clock, Lock, XCircle, AlertTriangle, ChevronDown, ChevronUp, ArrowLeft, MapPin } from 'lucide-react';
+import { CheckCircle, Clock, Lock, XCircle, AlertTriangle, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
 import { POST_DATA } from '../data/postData';
 import { APPROVAL_DATA, ApprovalLocation } from '../data/approvalData';
-import { ActivityFeed } from './ActivityFeed';
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -212,24 +211,6 @@ function LocationDetailCard({ location, locationState, postId, canReview, onBack
   const statusBg    = status === 'rejected' ? '#fde3e1' : status === 'approved' ? '#eaf7e8' : '#fef6e0';
   const statusColor = status === 'rejected' ? '#bf170a' : status === 'approved' ? '#377e2c' : '#a77b03';
 
-  // Activity items for this location — same visual style as ActivityFeed
-  type ActivityItem = {
-    Icon: typeof MapPin;
-    iconColor: string;
-    user: string;
-    description: string;
-    timestamp: string;
-  };
-  const activityItems: ActivityItem[] = [
-    { Icon: MapPin,       iconColor: '#555',     user: 'System',                            description: `${location.name} was added to this post`,                time: 'Mar 2, 2026 5:30 PM' },
-    { Icon: Clock,        iconColor: '#1976d2',  user: 'Ana Perez',                         description: 'submitted post for approval including this location',     time: 'Mar 3, 2026 9:00 AM' },
-    ...(status === 'approved'
-      ? [{ Icon: CheckCircle, iconColor: '#377e2c', user: location.actionedBy || 'Reviewer', description: 'approved this location', time: location.actionedAt || '' } as ActivityItem]
-      : status === 'rejected'
-      ? [{ Icon: XCircle,    iconColor: '#bf170a', user: location.actionedBy || 'Reviewer', description: 'rejected this location',  time: location.actionedAt || '' } as ActivityItem]
-      : []
-    ),
-  ];
 
   return (
     <div className="absolute inset-0 bg-white z-30 flex flex-col overflow-hidden">
@@ -376,37 +357,6 @@ function LocationDetailCard({ location, locationState, postId, canReview, onBack
             </div>
           </div>
 
-          {/* Activity — matches ActivityFeed visual style */}
-          <div>
-            <p className="font-['Roboto:Regular',sans-serif] text-[12px] text-[#555] uppercase tracking-[0.5px] mb-[4px]" style={{ fontVariationSettings: "'wdth' 100" }}>
-              Activity
-            </p>
-            <div className="divide-y divide-[#eaeaea]">
-              {activityItems.map((item, idx) => (
-                <div key={idx} className="flex gap-[8px] items-start py-[12px]">
-                  {/* Icon circle */}
-                  <div
-                    className="rounded-full shrink-0 size-[32px] flex items-center justify-center"
-                    style={{ backgroundColor: '#f0f0f0' }}
-                  >
-                    <item.Icon size={16} strokeWidth={2} color={item.iconColor} />
-                  </div>
-                  {/* Text */}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-['Roboto:Regular',sans-serif] text-[12px] text-[#555] leading-[18px]" style={{ fontVariationSettings: "'wdth' 100" }}>
-                      {item.timestamp}
-                    </p>
-                    <p className="font-['Roboto:Regular',sans-serif] text-[14px] text-[#212121] leading-[20px]" style={{ fontVariationSettings: "'wdth' 100" }}>
-                      <span className="font-['Roboto:Medium',sans-serif]" style={{ fontVariationSettings: "'wdth' 100" }}>{item.user}</span>
-                      {' '}
-                      {item.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
         </div>
       </div>
     </div>
@@ -464,8 +414,6 @@ export function AwaitingApprovalContent({ postId, onClose }: AwaitingApprovalCon
     return () => document.removeEventListener('mousedown', handleClick);
   }, [previewDropdownOpen]);
 
-  // Activity section collapse
-  const [activityOpen, setActivityOpen] = useState(false);
 
   const visibleLocations = (approvalData?.locations || []).filter(
     loc => loc.isCurrentUserScope
@@ -823,23 +771,6 @@ export function AwaitingApprovalContent({ postId, onClose }: AwaitingApprovalCon
           </div>
         </div>
 
-        {/* ── Activity Feed (collapsible) ── */}
-        <div>
-          <button
-            className="w-full flex items-center justify-between px-[24px] py-[14px] hover:bg-[#fafafa]"
-            onClick={() => setActivityOpen(!activityOpen)}
-          >
-            <p className="font-['Roboto:Regular',sans-serif] text-[14px] text-[#212121]" style={{ fontVariationSettings: "'wdth' 100" }}>
-              Activity
-            </p>
-            {activityOpen ? <ChevronUp size={18} color="#555" /> : <ChevronDown size={18} color="#555" />}
-          </button>
-          {activityOpen && (
-            <div className="px-[24px] pb-[24px]">
-              <ActivityFeed postId={postId} />
-            </div>
-          )}
-        </div>
       </div>
 
       {/* ── Rejection Modal ── */}

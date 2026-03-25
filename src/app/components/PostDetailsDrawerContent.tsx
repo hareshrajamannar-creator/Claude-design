@@ -1,5 +1,6 @@
 import svgPaths from "../../imports/svg-zf6pg056p3";
 import { imgArrowLeftAlt } from "../../imports/svg-pf7eq";
+import { ArrowLeft, MoreVertical } from 'lucide-react';
 import { POST_DATA, StatusType } from "../data/postData";
 import { AwaitingApprovalContent } from "./AwaitingApprovalContent";
 
@@ -70,129 +71,53 @@ export function PostDetailsDrawerContent({ postId, onClose }: PostDetailsDrawerC
   const sConfig = statusConfig[post.status];
 
   // Action buttons differ by status
+  // Shared button primitives — identical to AwaitingApprovalContent
+  const SecondaryBtn = ({ label }: { label: string }) => (
+    <button className="h-[36px] px-[12px] border border-[#e5e9f0] rounded-[4px] font-['Roboto:Regular',sans-serif] text-[14px] text-[#212121] hover:bg-[#f4f6f7] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>
+      {label}
+    </button>
+  );
+  const PrimaryBtn = ({ label, color = '#1976d2' }: { label: string; color?: string }) => (
+    <button className="h-[36px] px-[12px] rounded-[4px] font-['Roboto:Regular',sans-serif] text-[14px] text-white hover:opacity-90 whitespace-nowrap" style={{ backgroundColor: color, fontVariationSettings: "'wdth' 100" }}>
+      {label}
+    </button>
+  );
+
   const renderActions = () => {
     switch (post.status) {
-      case 'scheduled':
-        return (
-          <>
-            <div className="bg-white content-stretch flex gap-[8px] h-[36px] items-center justify-center px-[12px] py-[8px] relative rounded-[4px] shrink-0 cursor-pointer">
-              <div aria-hidden="true" className="absolute border border-[#e5e9f0] border-solid inset-0 pointer-events-none rounded-[4px]" />
-              <p className="font-['Roboto:Regular',sans-serif] font-normal leading-[20px] relative shrink-0 text-[#212121] text-[14px] tracking-[-0.28px] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>Reschedule</p>
-            </div>
-            <div className="bg-[#1976d2] content-stretch flex gap-[8px] h-[36px] items-center justify-center px-[12px] py-[8px] relative rounded-[4px] shrink-0 cursor-pointer">
-              <p className="font-['Roboto:Regular',sans-serif] font-normal leading-[20px] relative shrink-0 text-[14px] text-white tracking-[-0.28px] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>Post now</p>
-            </div>
-          </>
-        );
-      case 'awaiting':
-        return (
-          <>
-            <div className="bg-white content-stretch flex gap-[8px] h-[36px] items-center justify-center px-[12px] py-[8px] relative rounded-[4px] shrink-0 cursor-pointer">
-              <div aria-hidden="true" className="absolute border border-[#e5e9f0] border-solid inset-0 pointer-events-none rounded-[4px]" />
-              <p className="font-['Roboto:Regular',sans-serif] font-normal leading-[20px] relative shrink-0 text-[#212121] text-[14px] tracking-[-0.28px] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>Reject</p>
-            </div>
-            <div className="bg-[#1976d2] content-stretch flex gap-[8px] h-[36px] items-center justify-center px-[12px] py-[8px] relative rounded-[4px] shrink-0 cursor-pointer">
-              <p className="font-['Roboto:Regular',sans-serif] font-normal leading-[20px] relative shrink-0 text-[14px] text-white tracking-[-0.28px] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>Approve</p>
-            </div>
-          </>
-        );
-      case 'partially':
-        return (
-          <>
-            <div className="bg-white content-stretch flex gap-[8px] h-[36px] items-center justify-center px-[12px] py-[8px] relative rounded-[4px] shrink-0 cursor-pointer">
-              <div aria-hidden="true" className="absolute border border-[#e5e9f0] border-solid inset-0 pointer-events-none rounded-[4px]" />
-              <p className="font-['Roboto:Regular',sans-serif] font-normal leading-[20px] relative shrink-0 text-[#212121] text-[14px] tracking-[-0.28px] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>Reject all</p>
-            </div>
-            <div className="bg-[#1976d2] content-stretch flex gap-[8px] h-[36px] items-center justify-center px-[12px] py-[8px] relative rounded-[4px] shrink-0 cursor-pointer">
-              <p className="font-['Roboto:Regular',sans-serif] font-normal leading-[20px] relative shrink-0 text-[14px] text-white tracking-[-0.28px] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>Approve all</p>
-            </div>
-          </>
-        );
-      case 'rejected':
-        return (
-          <>
-            <div className="bg-white content-stretch flex gap-[8px] h-[36px] items-center justify-center px-[12px] py-[8px] relative rounded-[4px] shrink-0 cursor-pointer">
-              <div aria-hidden="true" className="absolute border border-[#e5e9f0] border-solid inset-0 pointer-events-none rounded-[4px]" />
-              <p className="font-['Roboto:Regular',sans-serif] font-normal leading-[20px] relative shrink-0 text-[#212121] text-[14px] tracking-[-0.28px] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>Edit post</p>
-            </div>
-            <div className="bg-[#1976d2] content-stretch flex gap-[8px] h-[36px] items-center justify-center px-[12px] py-[8px] relative rounded-[4px] shrink-0 cursor-pointer">
-              <p className="font-['Roboto:Regular',sans-serif] font-normal leading-[20px] relative shrink-0 text-[14px] text-white tracking-[-0.28px] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>Resubmit</p>
-            </div>
-          </>
-        );
-      case 'draft':
-        return (
-          <>
-            <div className="bg-white content-stretch flex gap-[8px] h-[36px] items-center justify-center px-[12px] py-[8px] relative rounded-[4px] shrink-0 cursor-pointer">
-              <div aria-hidden="true" className="absolute border border-[#e5e9f0] border-solid inset-0 pointer-events-none rounded-[4px]" />
-              <p className="font-['Roboto:Regular',sans-serif] font-normal leading-[20px] relative shrink-0 text-[#212121] text-[14px] tracking-[-0.28px] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>Edit</p>
-            </div>
-            <div className="bg-[#1976d2] content-stretch flex gap-[8px] h-[36px] items-center justify-center px-[12px] py-[8px] relative rounded-[4px] shrink-0 cursor-pointer">
-              <p className="font-['Roboto:Regular',sans-serif] font-normal leading-[20px] relative shrink-0 text-[14px] text-white tracking-[-0.28px] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>Schedule</p>
-            </div>
-          </>
-        );
-      case 'ai-suggested':
-        return (
-          <>
-            <div className="bg-white content-stretch flex gap-[8px] h-[36px] items-center justify-center px-[12px] py-[8px] relative rounded-[4px] shrink-0 cursor-pointer">
-              <div aria-hidden="true" className="absolute border border-[#e5e9f0] border-solid inset-0 pointer-events-none rounded-[4px]" />
-              <p className="font-['Roboto:Regular',sans-serif] font-normal leading-[20px] relative shrink-0 text-[#212121] text-[14px] tracking-[-0.28px] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>Dismiss</p>
-            </div>
-            <div className="bg-[#6834b7] content-stretch flex gap-[8px] h-[36px] items-center justify-center px-[12px] py-[8px] relative rounded-[4px] shrink-0 cursor-pointer">
-              <p className="font-['Roboto:Regular',sans-serif] font-normal leading-[20px] relative shrink-0 text-[14px] text-white tracking-[-0.28px] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>Use suggestion</p>
-            </div>
-          </>
-        );
+      case 'scheduled':    return <><SecondaryBtn label="Reschedule" /><PrimaryBtn label="Post now" /></>;
+      case 'draft':        return <><SecondaryBtn label="Edit" /><PrimaryBtn label="Schedule" /></>;
+      case 'ai-suggested': return <><SecondaryBtn label="Dismiss" /><PrimaryBtn label="Use suggestion" color="#6834b7" /></>;
       case 'published':
-      default:
-        return (
-          <div className="bg-white content-stretch flex gap-[8px] h-[36px] items-center justify-center px-[12px] py-[8px] relative rounded-[4px] shrink-0 cursor-pointer">
-            <div aria-hidden="true" className="absolute border border-[#e5e9f0] border-solid inset-0 pointer-events-none rounded-[4px]" />
-            <p className="font-['Roboto:Regular',sans-serif] font-normal leading-[20px] relative shrink-0 text-[#212121] text-[14px] tracking-[-0.28px] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>View post</p>
-          </div>
-        );
+      default:             return <SecondaryBtn label="View post" />;
     }
   };
 
   return (
     <div className="bg-white relative size-full">
-      {/* Header */}
-      <div className="bg-white border-b border-[#eaeaea] content-stretch flex items-center justify-between pb-[16px] pt-[24px] px-[24px] sticky top-0 w-full z-10">
-        <div className="flex flex-row items-center self-stretch">
-          <div className="content-stretch flex gap-[8px] h-full items-center relative shrink-0">
-            <div className="relative shrink-0 size-[20px] cursor-pointer" onClick={onClose}>
-              <div className="absolute inset-[27.78%_17.91%_27.76%_19.41%] mask-alpha mask-intersect mask-no-clip mask-no-repeat mask-position-[-3.883px_-5.557px] mask-size-[20px_20px]" style={{ maskImage: `url('${imgArrowLeftAlt}')` }}>
-                <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 12.5352 8.89044">
-                  <path d={svgPaths.p3ae4b800} fill="var(--fill-0, #303030)" />
-                </svg>
-              </div>
-            </div>
-            <p className="font-['Roboto:Regular',sans-serif] font-normal leading-[26px] relative shrink-0 text-[#212121] text-[18px] tracking-[-0.36px] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>
-              Post details
+      {/* Header — matches AwaitingApprovalContent layout exactly */}
+      <div className="bg-white border-b border-[#eaeaea] flex items-center justify-between px-[24px] py-[18px] sticky top-0 w-full z-10">
+        <div className="flex items-center gap-[8px]">
+          <button className="p-[2px] hover:bg-[#f4f6f7] rounded cursor-pointer shrink-0" onClick={onClose}>
+            <ArrowLeft size={20} color="#303030" />
+          </button>
+          <p className="font-['Roboto:Regular',sans-serif] font-normal text-[18px] text-[#212121] tracking-[-0.36px] whitespace-nowrap" style={{ fontVariationSettings: "'wdth' 100" }}>
+            Post details
+          </p>
+          {/* Status badge */}
+          <div className="px-[8px] py-[4px] rounded-[4px] shrink-0" style={{ backgroundColor: sConfig.bg }}>
+            <p className="font-['Roboto:Regular',sans-serif] text-[12px] whitespace-nowrap" style={{ color: sConfig.color, fontVariationSettings: "'wdth' 100" }}>
+              {sConfig.label}
             </p>
-            {/* Status badge */}
-            <div className="content-stretch flex gap-[4px] items-center px-[8px] py-[4px] relative rounded-[4px] shrink-0" style={{ backgroundColor: sConfig.bg }}>
-              <p className="font-['Roboto:Regular',sans-serif] font-normal leading-[18px] relative shrink-0 text-[12px] text-center tracking-[-0.24px] whitespace-nowrap" style={{ color: sConfig.color, fontVariationSettings: "'wdth' 100" }}>
-                {sConfig.label}
-              </p>
-            </div>
           </div>
         </div>
 
-        <div className="content-stretch flex gap-[10px] items-center relative shrink-0">
+        <div className="flex items-center gap-[8px] shrink-0">
           {renderActions()}
           {/* More options */}
-          <div className="content-stretch flex items-center justify-center p-[8px] relative rounded-[4px] shrink-0 size-[36px] cursor-pointer">
-            <div aria-hidden="true" className="absolute border border-[#e5e9f0] border-solid inset-0 pointer-events-none rounded-[4px]" />
-            <div className="relative shrink-0 size-[20px]">
-              <div className="absolute inset-[23.05%_44.58%] mask-alpha mask-intersect mask-no-clip mask-no-repeat mask-position-[-8.917px_-4.609px] mask-size-[20px_20px]" style={{ maskImage: `url('${imgArrowLeftAlt}')` }}>
-                <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 2.16663 10.782">
-                  <path d={svgPaths.p1b297900} fill="var(--fill-0, #303030)" />
-                </svg>
-              </div>
-            </div>
-          </div>
+          <button className="h-[36px] w-[36px] border border-[#e5e9f0] rounded-[4px] flex items-center justify-center hover:bg-[#f4f6f7] shrink-0">
+            <MoreVertical size={18} color="#555" />
+          </button>
         </div>
       </div>
 
